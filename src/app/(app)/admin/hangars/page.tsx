@@ -32,11 +32,38 @@ const hangarSchema = z.object({
 export default function HangarsAdminPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [hangars, setHangars] = useState<Hangar[]>(mockHangars);
-  const [loadingData, setLoadingData] = useState(false); // Data is mock, so not much loading
+  const { toast } = useToast();
+  const [hangars, setHangars] = useState<Hangar[]>([]);
+  const [loadingData, setLoadingData] = useState(true); // Chargement initial
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHangar, setEditingHangar] = useState<Hangar | null>(null);
-  const { toast } = useToast();
+  
+  // Récupérer les données des hangars depuis l'API
+  useEffect(() => {
+    const fetchHangars = async () => {
+      try {
+        const response = await fetch('/api/hangars');
+        if (!response.ok) {
+          throw new Error('Failed to fetch hangars');
+        }
+        const data = await response.json();
+        setHangars(data);
+      } catch (error) {
+        console.error('Error fetching hangars:', error);
+        // Utiliser les données mockées en cas d'erreur
+        setHangars(mockHangars);
+        toast({ 
+          title: "Erreur de connexion", 
+          description: "Impossible de récupérer les données. Utilisation des données de démonstration.", 
+          variant: "destructive" 
+        });
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    fetchHangars();
+  }, [toast]);
 
   const form = useForm<z.infer<typeof hangarSchema>>({
     resolver: zodResolver(hangarSchema),

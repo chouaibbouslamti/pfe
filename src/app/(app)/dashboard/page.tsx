@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const stats = [
   { title: "Alertes Actives", value: "3", icon: Bell, color: "text-destructive", href: "/alertes" },
   { title: "Interventions Planifiées", value: "5", icon: ClipboardList, color: "text-amber-600", href: "/interventions" },
-  { title: "Hangars Opérationnels", value: "8/10", icon: Warehouse, color: "text-green-600", href: "/hangars" },
+  { title: "Hangars Opérationnels", value: "8/10", icon: Warehouse, color: "text-green-600", href: "/admin/hangars" },
   { title: "Lots à Risque", value: "12", icon: BarChart3, color: "text-red-500", href: "/lots" },
 ];
 

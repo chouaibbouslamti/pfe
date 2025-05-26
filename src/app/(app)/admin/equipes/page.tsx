@@ -31,7 +31,7 @@ export default function TeamsAdminPage() {
   const { userProfile, loading: authLoading, localUserProfiles, setLocalUserProfiles: setLocalUsers } = useAuth();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>(mockTeams);
-  const [users, setUsers] = useState<UserProfile[]>(localUserProfiles); 
+  const [users, setUsers] = useState<UserProfile[]>(localUserProfiles || []); 
   const [loadingData, setLoadingData] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -59,23 +59,34 @@ export default function TeamsAdminPage() {
     }
   }, [userProfile, localUserProfiles]);
   
-  const getUserName = (uid: string) => {
-    const user = users.find(u => u.uid === uid);
-    return user ? `${user.firstName} ${user.lastName}` : uid;
+  const getUserName = (uid: string | number) => {
+    if (!users || !Array.isArray(users)) return String(uid);
+    const user = users.find(u => u && (u.uid === String(uid) || u.id === uid));
+    if (!user) return String(uid);
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return name || user.email || String(uid);
   }
 
   const onSubmit = async (values: z.infer<typeof teamSchema>) => {
     try {
       if (editingTeam) { // Update existing team
-        setTeams(prevTeams => prevTeams.map(t => t.id === editingTeam.id ? { ...editingTeam, ...values } : t));
+        setTeams(prevTeams => prevTeams.map(t => t.id === editingTeam.id ? { 
+          ...editingTeam, 
+          name: values.name,
+          contact: values.contact || undefined,
+          managerId: Number(values.managerId)
+        } : t));
         toast({ title: "Succès (simulation)", description: "Équipe mise à jour." });
         setEditingTeam(null);
         setIsEditDialogOpen(false);
       } else { // Create new team
         const newTeam: Team = {
           id: generateId(),
-          ...values,
-          members: [values.managerId], 
+          name: values.name,
+          contact: values.contact || undefined,
+          managerId: Number(values.managerId),
+          members: [],
+          memberIds: [Number(values.managerId)],
           createdAt: new Date(),
         };
         setTeams(prevTeams => [...prevTeams, newTeam]);
@@ -185,7 +196,7 @@ export default function TeamsAdminPage() {
                         <SelectContent>
                             <SelectGroup>
                             <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users.filter(u => u.role !== 'USER' && u.isActive).map(user => ( 
+                            {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => ( 
                                 <SelectItem key={user.uid} value={user.uid}>
                                 {user.firstName} {user.lastName} ({user.email})
                                 </SelectItem>
@@ -236,7 +247,7 @@ export default function TeamsAdminPage() {
                         <SelectContent>
                             <SelectGroup>
                             <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users.filter(u => u.role !== 'USER' && u.isActive).map(user => (
+                            {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => (
                                 <SelectItem key={user.uid} value={user.uid}>
                                 {user.firstName} {user.lastName} ({user.email})
                                 </SelectItem>
@@ -268,7 +279,7 @@ export default function TeamsAdminPage() {
               <DialogDescription>Sélectionnez les utilisateurs à ajouter ou retirer de cette équipe.</DialogDescription>
             </DialogHeader>
             <div className="py-4 max-h-96 overflow-y-auto space-y-2">
-              {users.filter(u => u.uid !== teamToManageMembers?.managerId && u.isActive).map(user => ( 
+              {users?.filter(u => u && u.uid !== teamToManageMembers?.managerId && u.isActive).map(user => ( 
                 <div key={user.uid} className="flex items-center space-x-2 p-2 border rounded-md">
                   <Checkbox
                     id={`member-${user.uid}`}
@@ -311,8 +322,8 @@ export default function TeamsAdminPage() {
                   {teams.map((team) => (
                     <TableRow key={team.id}>
                       <TableCell className="font-medium">{team.name}</TableCell>
-                      <TableCell>{getUserName(team.managerId)}</TableCell>
-                      <TableCell>{team.members?.length || 0}</TableCell>
+                      <TableCell>{!users ? 'Chargement...' : team.managerId ? getUserName(team.managerId) : 'Non défini'}</TableCell>
+                      <TableCell>{team.memberIds?.length || team.members?.length || 0}</TableCell>
                       <TableCell>{team.contact || "N/A"}</TableCell>
                       <TableCell className="text-right">
                          <DropdownMenu>

@@ -1,5 +1,5 @@
 
-import prisma from '@/lib/prisma';
+import prisma, { convertBigIntToNumber } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import type { UserProfile } from '@/types';
@@ -38,16 +38,11 @@ export async function POST(request: Request) {
         isApproved: true, // Auto-approve for this setup
         createdAt: new Date(),
         lastLogin: new Date(),
-        photoURL: `https://placehold.co/100x100.png?text=${firstName[0]}${lastName[0]}`,
       },
     });
 
-    // Convert BigInt id to number or string for JSON response
-    const userToReturn = {
-      ...newUser,
-      id: Number(newUser.id), // Or newUser.id.toString() if numbers can get very large
-      teamId: newUser.teamId ? Number(newUser.teamId) : null,
-    } as unknown as UserProfile;
+    // Conversion automatique des BigInt en nombres pour la sérialisation JSON
+    const userToReturn = convertBigIntToNumber(newUser) as unknown as UserProfile;
 
 
     return NextResponse.json({ user: userToReturn }, { status: 201 });

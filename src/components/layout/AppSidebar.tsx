@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   { href: "/alertes", label: "Alertes", icon: Bell, roles: ["SUPER_ADMIN", "TEAM_MANAGER", "USER"] },
   { href: "/interventions", label: "Interventions", icon: ClipboardList, roles: ["SUPER_ADMIN", "TEAM_MANAGER"] },
   { href: "/taches", label: "Mes Tâches", icon: ListChecks, roles: ["USER"] },
-  { href: "/hangars", label: "Hangars", icon: Warehouse, roles: ["SUPER_ADMIN", "TEAM_MANAGER"], disabled: false },
+  { href: "/admin/hangars", label: "Hangars", icon: Warehouse, roles: ["SUPER_ADMIN", "TEAM_MANAGER"], disabled: false },
   { href: "/lots", label: "Lots d'Engrais", icon: PackageSearch, roles: ["SUPER_ADMIN", "TEAM_MANAGER"], disabled: false },
   { href: "/kpi", label: "Indicateurs (KPI)", icon: BarChart3, roles: ["SUPER_ADMIN", "TEAM_MANAGER"] },
   { href: "/admin/utilisateurs", label: "Utilisateurs", icon: Users, roles: ["SUPER_ADMIN"] },

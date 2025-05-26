@@ -16,16 +16,21 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => Promise<void>;
   signup: (userData: Omit<UserProfile, 'uid' | 'id' | 'lastLogin' | 'isApproved' | 'isActive' | 'createdAt' | 'role' | 'teamId' | 'photoURL'> & {password: string}) => Promise<boolean>;
-  // localUserProfiles are no longer managed here, it will be DB driven
-  // setLocalUserProfiles is no longer needed
+  // Ajout de la gestion des utilisateurs locaux pour le mode démo
+  localUserProfiles: UserProfile[];
+  setLocalUserProfiles: (users: UserProfile[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Import des données mockées pour le mode démo
+import { mockUserProfiles } from "@/lib/mockData";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<MockUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [localUserProfiles, setLocalUserProfiles] = useState<UserProfile[]>(mockUserProfiles);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -180,7 +185,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   return (
-    <AuthContext.Provider value={{ currentUser, userProfile, loading, role, login, logout, signup }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      userProfile, 
+      loading, 
+      role, 
+      login, 
+      logout, 
+      signup, 
+      localUserProfiles, 
+      setLocalUserProfiles 
+    }}>
       {children}
     </AuthContext.Provider>
   );

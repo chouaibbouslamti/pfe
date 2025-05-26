@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,9 +47,82 @@ export default function BatchesPage() {
   const searchParams = useSearchParams();
   const hangarIdFilter = searchParams.get('hangarId');
 
-  const [allBatches, setAllBatches] = useState<Batch[]>(mockBatches);
-  const [hangars] = useState<Hangar[]>(mockHangars); // Mock data, no need to fetch
-  const [teams] = useState<Team[]>(mockTeams); // Mock data
+  const [allBatches, setAllBatches] = useState<Batch[]>([]);
+  const [hangars, setHangars] = useState<Hangar[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(true);
+  const [loadingHangars, setLoadingHangars] = useState(true);
+  const [loadingTeams, setLoadingTeams] = useState(true);
+  
+  // Récupération des données depuis l'API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Récupérer les lots
+        const batchesResponse = await fetch(hangarIdFilter 
+          ? `/api/batches?hangarId=${hangarIdFilter}` 
+          : '/api/batches'
+        );
+        
+        if (batchesResponse.ok) {
+          const batchesData = await batchesResponse.json();
+          setAllBatches(batchesData);
+        } else {
+          // Utiliser les données mockées en cas d'erreur
+          setAllBatches(mockBatches);
+          console.error('Failed to fetch batches');
+        }
+      } catch (error) {
+        console.error('Error fetching batches:', error);
+        // Utiliser les données mockées en cas d'erreur
+        setAllBatches(mockBatches);
+      } finally {
+        setLoadingBatches(false);
+      }
+
+      try {
+        // Récupérer les hangars
+        const hangarsResponse = await fetch('/api/hangars');
+        
+        if (hangarsResponse.ok) {
+          const hangarsData = await hangarsResponse.json();
+          setHangars(hangarsData);
+        } else {
+          // Utiliser les données mockées en cas d'erreur
+          setHangars(mockHangars);
+          console.error('Failed to fetch hangars');
+        }
+      } catch (error) {
+        console.error('Error fetching hangars:', error);
+        // Utiliser les données mockées en cas d'erreur
+        setHangars(mockHangars);
+      } finally {
+        setLoadingHangars(false);
+      }
+
+      try {
+        // Récupérer les équipes
+        const teamsResponse = await fetch('/api/teams');
+        
+        if (teamsResponse.ok) {
+          const teamsData = await teamsResponse.json();
+          setTeams(teamsData);
+        } else {
+          // Utiliser les données mockées en cas d'erreur
+          setTeams(mockTeams);
+          console.error('Failed to fetch teams');
+        }
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+        // Utiliser les données mockées en cas d'erreur
+        setTeams(mockTeams);
+      } finally {
+        setLoadingTeams(false);
+      }
+    };
+
+    fetchData();
+  }, [hangarIdFilter]);
   const [loadingData, setLoadingData] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);

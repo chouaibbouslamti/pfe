@@ -107,18 +107,52 @@ export default function UsersAdminPage() {
     SUPER_ADMIN: "Super Admin",
   };
 
-  const filteredUsers = localUserProfiles.filter(user => {
-    const matchesSearch = `${user.firstName} ${user.lastName} ${user.email} ${user.username}`.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredUsers = (localUserProfiles || []).filter(user => {
+    if (!user) return false;
+    
+    const searchableText = `${user.firstName || ''} ${user.lastName || ''} ${user.email || ''} ${user.username || ''}`.toLowerCase();
+    const searchTermLower = searchTerm.toLowerCase();
+    const matchesSearch = searchableText.includes(searchTermLower);
+    
     const matchesStatus = filterStatus === "all" ||
-      (filterStatus === "approved" && user.isApproved && user.isActive) || // "pending" is now "approved" for mock
-      (filterStatus === "pending" && !user.isApproved && user.isActive) || // Kept for filter UI, but isApproved is true for mock
+      (filterStatus === "approved" && user.isApproved && user.isActive) ||
+      (filterStatus === "pending" && !user.isApproved && user.isActive) ||
       (filterStatus === "inactive" && !user.isActive);
+      
     return matchesSearch && matchesStatus;
   });
 
 
-  if (authLoading || (userProfile?.role !== "SUPER_ADMIN" && !loadingUsers)) {
-     return <div className="flex justify-center items-center h-screen"><p>Accès non autorisé ou chargement...</p></div>;
+  if (authLoading || loadingUsers) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Chargement des utilisateurs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (userProfile?.role !== "SUPER_ADMIN") {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center p-6 bg-card rounded-lg shadow-sm">
+          <ShieldQuestion className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Accès non autorisé</h2>
+          <p className="text-muted-foreground">
+            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+          </p>
+          <Button 
+            onClick={() => router.push('/dashboard')} 
+            className="mt-4"
+            variant="outline"
+          >
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
