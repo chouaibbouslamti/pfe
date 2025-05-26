@@ -8,7 +8,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context"; // Use our mock auth
+import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +17,15 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Adresse e-mail invalide." }),
-  password: z.string().min(1, { message: "Le mot de passe est requis." }), // Min 1 for mock
+  password: z.string().min(1, { message: "Le mot de passe est requis." }),
 });
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
-  const { login } = useAuth(); // Get login from mock context
+  const router = useRouter(); // Keep for potential future use, though AuthProvider handles redirect
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,17 +37,17 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    const success = await login(values.email, values.password); // Call mock login
+    const success = await login(values.email, values.password);
     if (success) {
       toast({
-        title: "Connexion réussie (simulation)",
+        title: "Connexion réussie",
         description: "Vous êtes maintenant connecté.",
       });
       // AuthProvider handles redirection
     } else {
       toast({
-        title: "Erreur de connexion (simulation)",
-        description: "Email ou mot de passe incorrect, ou utilisateur inactif/non approuvé.",
+        title: "Erreur de connexion",
+        description: "Email ou mot de passe incorrect, ou compte inactif/non approuvé.",
         variant: "destructive",
       });
     }
@@ -58,7 +58,7 @@ export function LoginForm() {
     <Card className="w-full shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Connexion</CardTitle>
-        <CardDescription>Entrez vos identifiants pour accéder à votre compte (simulation locale).</CardDescription>
+        <CardDescription>Entrez vos identifiants pour accéder à votre compte.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -70,7 +70,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="super@example.com" {...field} />
+                    <Input placeholder="exemple@domaine.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -121,7 +121,7 @@ export function LoginForm() {
           </Link>
         </p>
          <p className="text-xs text-muted-foreground mt-2">
-            Exemples: super@example.com, manager@example.com, user@example.com (mdp: password)
+            Utilisez les identifiants de votre base de données.
         </p>
       </CardFooter>
     </Card>

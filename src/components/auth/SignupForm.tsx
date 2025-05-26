@@ -8,7 +8,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context"; // Use our mock auth
+import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -19,8 +19,9 @@ const formSchema = z.object({
   lastName: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
   username: z.string().min(3, { message: "Le nom d'utilisateur doit contenir au moins 3 caractères." }),
   email: z.string().email({ message: "Adresse e-mail invalide." }),
-  password: z.string().min(1, { message: "Le mot de passe est requis." }), // Min 1 for mock
+  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }), // Adjusted for better practice
   confirmPassword: z.string(),
+  phoneNumber: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Les mots de passe ne correspondent pas.",
   path: ["confirmPassword"],
@@ -31,7 +32,7 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
-  const { signup } = useAuth(); // Get signup from mock context
+  const { signup } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,24 +43,27 @@ export function SignupForm() {
       email: "",
       password: "",
       confirmPassword: "",
+      phoneNumber: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    const { confirmPassword, ...signupData } = values;
-    const success = await signup(signupData); // Call mock signup
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { confirmPassword, ...signupData } = values; 
+    
+    const success = await signup(signupData);
 
     if (success) {
       toast({
-        title: "Inscription réussie (simulation)",
+        title: "Inscription réussie",
         description: "Votre compte a été créé et vous êtes connecté.",
       });
       // AuthProvider handles redirection
     } else {
       toast({
-        title: "Erreur d'inscription (simulation)",
-        description: "Cet email est peut-être déjà utilisé.",
+        title: "Erreur d'inscription",
+        description: "Impossible de créer le compte. L'email ou le nom d'utilisateur est peut-être déjà utilisé.",
         variant: "destructive",
       });
     }
@@ -70,7 +74,7 @@ export function SignupForm() {
     <Card className="w-full shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Inscription</CardTitle>
-        <CardDescription>Créez votre compte (simulation locale).</CardDescription>
+        <CardDescription>Créez votre compte.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -124,6 +128,19 @@ export function SignupForm() {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="exemple@domaine.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numéro de téléphone (Optionnel)</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="0612345678" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
