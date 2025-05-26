@@ -1,31 +1,29 @@
+
+"use client"; // Added "use client" for state management
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, SlidersHorizontal } from "lucide-react";
-import type { Metadata } from "next";
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ClipboardList } from "lucide-react";
+// import type { Metadata } from "next"; // Metadata for server components
 import Link from "next/link";
+import { useState, useMemo } from "react";
+import type { Intervention } from "@/types";
+import { mockInterventionsData } from "@/lib/mockData";
 
-export const metadata: Metadata = {
-  title: "Interventions - Gestion Hangar Intelligent",
-  description: "Planifiez et suivez les interventions sur les lots et hangars.",
-};
+// export const metadata: Metadata = { // Removed metadata for client component
+//   title: "Interventions - Gestion Hangar Intelligent",
+//   description: "Planifiez et suivez les interventions sur les lots et hangars.",
+// };
 
-// Mock data for interventions
-const mockInterventions = [
-  { id: "INT001", title: "Contrôle qualité Lot #L0T78", description: "Vérification de l'état du lot suite à alerte expiration.", scheduledTime: new Date(Date.now() + 86400000 * 1).toISOString(), hangarId: "H002", teamId: "T001", status: "PLANNED" },
-  { id: "INT002", title: "Réparation système ventilation Hangar Alpha", description: "Intervention suite à détection de température anormale.", scheduledTime: new Date(Date.now() + 86400000 * 2).toISOString(), hangarId: "H001", teamId: "T002", status: "PLANNED" },
-  { id: "INT003", title: "Rotation Stock Hangar Bravo", description: "Déplacement des lots anciens pour optimiser le stockage.", scheduledTime: new Date(Date.now() - 86400000 * 3).toISOString(), hangarId: "H002", teamId: "T001", status: "IN_PROGRESS" },
-  { id: "INT004", title: "Nettoyage complet Hangar Gamma", description: "Maintenance annuelle et nettoyage.", scheduledTime: new Date(Date.now() - 86400000 * 7).toISOString(), hangarId: "H003", teamId: "T003", status: "COMPLETED" },
-  { id: "INT005", title: "Reconditionnement Lot #L0T60", description: "Lot endommagé pendant transport.", scheduledTime: new Date(Date.now() - 86400000 * 5).toISOString(), hangarId: "H001", batchId: "L0T60", teamId: "T002", status: "CANCELLED" },
-];
 
 const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
   switch (status) {
-    case "PLANNED": return "default"; // Blue (primary)
-    case "IN_PROGRESS": return "secondary"; // Yellow/Orange (custom style if needed)
-    case "COMPLETED": return "outline"; // Green (custom style if needed, using outline for now)
+    case "PLANNED": return "default"; 
+    case "IN_PROGRESS": return "secondary"; 
+    case "COMPLETED": return "outline"; 
     case "CANCELLED": return "destructive";
     default: return "outline";
   }
@@ -40,19 +38,38 @@ const statusTranslations: { [key: string]: string } = {
 
 
 export default function InterventionsPage() {
+  const [interventions, setInterventions] = useState<Intervention[]>(mockInterventionsData);
+  // Add state for filters if needed, e.g.,
+  // const [statusFilter, setStatusFilter] = useState("all");
+  // const [teamFilter, setTeamFilter] = useState("all");
+
+  const filteredInterventions = useMemo(() => {
+    // Apply filters here if implemented
+    return interventions;
+  }, [interventions /*, statusFilter, teamFilter */]);
+  
+  // Placeholder for deleting/cancelling an intervention
+  const handleCancelIntervention = (id: string) => {
+    if(confirm("Êtes-vous sûr de vouloir annuler cette intervention (simulation)?")) {
+      setInterventions(prev => prev.map(inv => inv.id === id ? {...inv, status: "CANCELLED"} : inv));
+      // Add toast notification if desired
+    }
+  };
+
+
   return (
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestion des Interventions</h1>
-          <p className="text-muted-foreground">Planifiez, assignez et suivez toutes les interventions.</p>
+          <p className="text-muted-foreground">Planifiez, assignez et suivez toutes les interventions (simulation locale).</p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" disabled> {/* Filter functionality can be added later */}
             <SlidersHorizontal className="mr-2 h-4 w-4" /> Filtres
           </Button>
           <Button asChild>
-            <Link href="/interventions/creer">
+            <Link href="/interventions/creer"> {/* Assuming creer page will be adapted */}
               <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Intervention
             </Link>
           </Button>
@@ -65,7 +82,7 @@ export default function InterventionsPage() {
           <CardDescription>Aperçu des interventions planifiées, en cours et terminées.</CardDescription>
         </CardHeader>
         <CardContent>
-          {mockInterventions.length > 0 ? (
+          {filteredInterventions.length > 0 ? (
              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -79,11 +96,11 @@ export default function InterventionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockInterventions.map((intervention) => (
+                  {filteredInterventions.map((intervention) => (
                     <TableRow key={intervention.id}>
                       <TableCell className="font-medium">{intervention.title}</TableCell>
                       <TableCell>{intervention.hangarId}{intervention.batchId ? ` / ${intervention.batchId}`: ''}</TableCell>
-                      <TableCell>Équipe {intervention.teamId.replace('T00', '')}</TableCell>
+                      <TableCell>Équipe {intervention.teamId.replace('team', '') /* Basic display */}</TableCell>
                       <TableCell>{new Date(intervention.scheduledTime).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(intervention.status)}>
@@ -100,10 +117,18 @@ export default function InterventionsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild><Link href={`/interventions/${intervention.id}`}>Voir Détails</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/interventions/modifier/${intervention.id}`}>Modifier</Link></DropdownMenuItem>
+                            {/* Adapt links if /interventions/[id] and /interventions/modifier/[id] are implemented */}
+                            <DropdownMenuItem asChild><Link href={`/interventions`}>Voir Détails (désactivé)</Link></DropdownMenuItem> 
+                            <DropdownMenuItem asChild><Link href={`/interventions`}>Modifier (désactivé)</Link></DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">Annuler</DropdownMenuItem>
+                            {intervention.status !== "COMPLETED" && intervention.status !== "CANCELLED" && (
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => handleCancelIntervention(intervention.id)}
+                              >
+                                Annuler
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

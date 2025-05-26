@@ -1,21 +1,20 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
-import { CheckCircle, Clock } from "lucide-react";
+import { CheckCircle, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function WaitingApprovalPage() {
+export default function InfoPageAfterAction() {
   const { userProfile, logout, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && userProfile?.isApproved) {
-      router.push("/dashboard");
-    }
-    if(!loading && !userProfile) {
+    if (!loading && !userProfile) {
+      // If somehow user lands here without being logged in (after logout for example)
       router.push("/connexion");
     }
   }, [userProfile, loading, router]);
@@ -28,7 +27,12 @@ export default function WaitingApprovalPage() {
     );
   }
   
-  if (userProfile?.isApproved) {
+  // This page is no longer for "waiting approval" in the mock setup,
+  // as users are auto-approved. It can be repurposed or simply navigated away from.
+  // For now, let's assume if a user lands here, they might have just signed up.
+  // Or it's an old link. We'll guide them to dashboard or login.
+
+  if (userProfile) {
      return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 p-4">
         <Card className="w-full max-w-md text-center shadow-xl">
@@ -36,39 +40,41 @@ export default function WaitingApprovalPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="mt-4 text-2xl">Compte Approuvé!</CardTitle>
+            <CardTitle className="mt-4 text-2xl">Action Réussie!</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Votre compte a été approuvé. Vous allez être redirigé.</p>
+            <p className="text-muted-foreground">Vous êtes connecté. Votre compte est actif.</p>
+            <Button onClick={() => router.push('/dashboard')} className="mt-6 w-full">
+                Aller au Tableau de Bord
+            </Button>
+            <Button onClick={logout} variant="outline" className="mt-2 w-full">
+                Se déconnecter
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-
+  // Fallback if no userProfile but not loading (e.g. after logout and browser back button)
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 p-4">
+     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 p-4">
       <Card className="w-full max-w-md text-center shadow-xl">
         <CardHeader>
            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Clock className="h-6 w-6 text-primary" />
+            <Info className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="mt-4 text-2xl">En attente d'approbation</CardTitle>
+          <CardTitle className="mt-4 text-2xl">Information</CardTitle>
           <CardDescription>
-            Votre compte a été créé avec succès. Un administrateur doit approuver votre demande avant que vous puissiez accéder à la plateforme.
+            Vous n'êtes pas connecté.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Vous recevrez une notification par e-mail une fois votre compte approuvé.
-            Merci de votre patience.
-          </p>
-          <Button onClick={logout} variant="outline" className="mt-6 w-full">
-            Se déconnecter
+          <Button onClick={() => router.push('/connexion')} className="mt-6 w-full">
+            Se connecter
           </Button>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

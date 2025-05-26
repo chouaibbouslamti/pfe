@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { doc, updateDoc } from "firebase/firestore";
-import { db, storage, auth as firebaseAuth } from "@/lib/firebase/config"; // Renamed auth to firebaseAuth to avoid conflict
-import { updatePassword, updateEmail as firebaseUpdateEmail } from "firebase/auth"; // Renamed updateEmail to firebaseUpdateEmail
 import { useState, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, Edit3, Eye, EyeOff } from "lucide-react";
 
@@ -26,8 +23,8 @@ const profileSchema = z.object({
 });
 
 const passwordSchema = z.object({
-  currentPassword: z.string().min(6, "Mot de passe actuel requis."),
-  newPassword: z.string().min(6, "Le nouveau mot de passe doit contenir au moins 6 caractères."),
+  currentPassword: z.string().min(1, "Mot de passe actuel requis (simulation)."),
+  newPassword: z.string().min(1, "Le nouveau mot de passe est requis (simulation)."),
   confirmPassword: z.string(),
 }).refine(data => data.newPassword === data.confirmPassword, {
   message: "Les nouveaux mots de passe ne correspondent pas.",
@@ -35,14 +32,14 @@ const passwordSchema = z.object({
 });
 
 export default function ProfilePage() {
-  const { userProfile, currentUser, loading: authLoading } = useAuth();
+  const { userProfile, currentUser, loading: authLoading, setLocalUserProfiles } = useAuth();
   const { toast } = useToast();
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(userProfile?.photoURL || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -51,13 +48,25 @@ export default function ProfilePage() {
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    values: {
+    values: { // Use values to allow dynamic updates if userProfile changes
       firstName: userProfile?.firstName || "",
       lastName: userProfile?.lastName || "",
       username: userProfile?.username || "",
       phoneNumber: userProfile?.phoneNumber || "",
     }
   });
+   useEffect(() => {
+    if (userProfile) {
+      profileForm.reset({
+        firstName: userProfile.firstName || "",
+        lastName: userProfile.lastName || "",
+        username: userProfile.username || "",
+        phoneNumber: userProfile.phoneNumber || "",
+      });
+      setAvatarPreview(userProfile.photoURL || null);
+    }
+  }, [userProfile, profileForm]);
+
 
   const passwordForm = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
@@ -67,76 +76,51 @@ export default function ProfilePage() {
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+      setAvatarFile(file); // Keep file for potential "upload" simulation
+      setAvatarPreview(URL.createObjectURL(file)); // Show preview
     }
   };
 
   async function onProfileSubmit(values: z.infer<typeof profileSchema>) {
-    if (!currentUser) return;
+    if (!currentUser || !userProfile) return;
     setLoadingProfile(true);
-    try {
-      let photoURL = userProfile?.photoURL;
-      if (avatarFile) {
-        const storageRef = ref(storage, `avatars/${currentUser.uid}/${avatarFile.name}`);
-        await uploadBytes(storageRef, avatarFile);
-        photoURL = await getDownloadURL(storageRef);
-      }
-
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userDocRef, { ...values, photoURL });
-      toast({ title: "Profil mis à jour", description: "Vos informations ont été sauvegardées." });
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le profil.", variant: "destructive" });
-    } finally {
-      setLoadingProfile(false);
-    }
+    // Simulate update
+    const updatedProfile: UserProfile = {
+        ...userProfile,
+        ...values,
+        photoURL: avatarPreview, // Use the preview URL as the new photoURL
+    };
+    // Update in local mock user list
+    setLocalUserProfiles(prev => prev.map(u => u.uid === currentUser.uid ? updatedProfile : u));
+    // Potentially update auth context's userProfile directly if needed for immediate reflection
+    // For simplicity, relying on localUserProfiles to be the source of truth for next login
+    
+    toast({ title: "Profil mis à jour (simulation)", description: "Vos informations ont été sauvegardées localement." });
+    setLoadingProfile(false);
   }
 
-  async function onPasswordSubmit(values: z.infer<typeof passwordSchema>) {
+  async function onPasswordSubmit(_values: z.infer<typeof passwordSchema>) {
     if (!currentUser) return;
     setLoadingPassword(true);
-    // Re-authentication might be needed for password change, this is simplified
-    try {
-      // This is a simplified version. For production, re-authenticate user first.
-      // const credential = EmailAuthProvider.credential(currentUser.email!, values.currentPassword);
-      // await reauthenticateWithCredential(currentUser, credential);
-      await updatePassword(currentUser, values.newPassword);
-      passwordForm.reset();
-      toast({ title: "Mot de passe modifié", description: "Votre mot de passe a été mis à jour." });
-    } catch (error: any) {
-      console.error(error);
-      let message = "Impossible de modifier le mot de passe.";
-      if (error.code === 'auth/wrong-password') message = "Mot de passe actuel incorrect.";
-      if (error.code === 'auth/requires-recent-login') message = "Veuillez vous reconnecter pour modifier votre mot de passe.";
-      toast({ title: "Erreur", description: message, variant: "destructive" });
-    } finally {
-      setLoadingPassword(false);
-    }
+    // Simulate password change
+    toast({ title: "Mot de passe modifié (simulation)", description: "Votre mot de passe a été mis à jour (simulation)." });
+    passwordForm.reset();
+    setLoadingPassword(false);
   }
   
-  // Email change functionality is complex due to re-authentication and verification.
-  // Simplified version:
   async function handleEmailChange() {
-    if (!currentUser || !newEmail) return;
+    if (!currentUser || !newEmail || !userProfile) return;
     setLoadingEmail(true);
-    try {
-      // Requires re-authentication in a real scenario
-      await firebaseUpdateEmail(currentUser, newEmail); 
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userDocRef, { email: newEmail });
-      toast({ title: "Email modifié", description: "Votre email a été mis à jour. Veuillez vérifier votre nouvelle adresse." });
-      setNewEmail("");
-    } catch (error: any) {
-      console.error(error);
-      let message = "Impossible de modifier l'email.";
-      if (error.code === 'auth/requires-recent-login') message = "Veuillez vous reconnecter pour modifier votre email.";
-      if (error.code === 'auth/email-already-in-use') message = "Cet email est déjà utilisé par un autre compte.";
-      toast({ title: "Erreur", description: message, variant: "destructive" });
-    } finally {
-      setLoadingEmail(false);
-    }
+    // Simulate email change
+    const updatedProfile: UserProfile = {
+        ...userProfile,
+        email: newEmail,
+    };
+    setLocalUserProfiles(prev => prev.map(u => u.uid === currentUser.uid ? updatedProfile : u));
+    
+    toast({ title: "Email modifié (simulation)", description: `Votre email a été mis à jour vers ${newEmail} (simulation).` });
+    setNewEmail("");
+    setLoadingEmail(false);
   }
 
 
@@ -154,7 +138,7 @@ export default function ProfilePage() {
     <div className="container mx-auto py-2 space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Mon Profil</h1>
-        <p className="text-muted-foreground">Gérez vos informations personnelles et paramètres de compte.</p>
+        <p className="text-muted-foreground">Gérez vos informations personnelles et paramètres de compte (simulation locale).</p>
       </div>
 
       <Card>
@@ -166,7 +150,7 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
                 <Avatar className="h-32 w-32">
-                  <AvatarImage src={avatarPreview || userProfile.photoURL || `https://placehold.co/128x128.png?text=${getInitials(userProfile.firstName, userProfile.lastName)}`} alt="Avatar" data-ai-hint="profile photo" />
+                  <AvatarImage src={avatarPreview || `https://placehold.co/128x128.png?text=${getInitials(userProfile.firstName, userProfile.lastName)}`} alt="Avatar" data-ai-hint="profile photo" />
                   <AvatarFallback>{getInitials(userProfile.firstName, userProfile.lastName)}</AvatarFallback>
                 </Avatar>
                 <Button 
@@ -289,7 +273,7 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Adresse E-mail</CardTitle>
-          <CardDescription>Votre adresse e-mail actuelle est {userProfile.email}. La modification de l'e-mail nécessitera une nouvelle vérification.</CardDescription>
+          <CardDescription>Votre adresse e-mail actuelle est {userProfile.email}.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <div>
@@ -307,7 +291,6 @@ export default function ProfilePage() {
                   Mettre à jour l'e-mail
                 </Button>
               </div>
-               <p className="text-xs text-muted-foreground mt-1">Attention: La modification de l'e-mail peut vous déconnecter.</p>
             </div>
         </CardContent>
       </Card>

@@ -1,5 +1,7 @@
+
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,14 +14,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Hangar } from "@/types";
-import { collection, addDoc, getDocs, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Warehouse, PlusCircle, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { mockHangars, generateId } from "@/lib/mockData";
 
 const hangarSchema = z.object({
   name: z.string().min(3, "Le nom du hangar est requis (min 3 caractères)."),
@@ -31,8 +32,8 @@ const hangarSchema = z.object({
 export default function HangarsAdminPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [hangars, setHangars] = useState<Hangar[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [hangars, setHangars] = useState<Hangar[]>(mockHangars);
+  const [loadingData, setLoadingData] = useState(false); // Data is mock, so not much loading
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHangar, setEditingHangar] = useState<Hangar | null>(null);
   const { toast } = useToast();
@@ -43,48 +44,33 @@ export default function HangarsAdminPage() {
   });
 
   useEffect(() => {
-    // Allow SUPER_ADMIN and TEAM_MANAGER
     if (!authLoading && userProfile && !["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role)) {
       router.replace("/dashboard");
     }
   }, [userProfile, authLoading, router]);
 
-  useEffect(() => {
-    if (userProfile && ["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role)) {
-      fetchHangars();
-    }
-  }, [userProfile]);
-
-  const fetchHangars = async () => {
-    setLoadingData(true);
-    try {
-      const hangarsSnapshot = await getDocs(collection(db, "hangars"));
-      setHangars(hangarsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hangar)));
-    } catch (error) {
-      console.error("Error fetching hangars:", error);
-      toast({ title: "Erreur", description: "Impossible de charger les hangars.", variant: "destructive" });
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
   const onSubmit = async (values: z.infer<typeof hangarSchema>) => {
     try {
       if (editingHangar) {
-        const hangarDocRef = doc(db, "hangars", editingHangar.id);
-        await updateDoc(hangarDocRef, values);
-        toast({ title: "Succès", description: "Hangar mis à jour." });
+        setHangars(prevHangars => 
+          prevHangars.map(h => h.id === editingHangar.id ? { ...editingHangar, ...values } : h)
+        );
+        toast({ title: "Succès (simulation)", description: "Hangar mis à jour." });
       } else {
-        await addDoc(collection(db, "hangars"), { ...values, createdAt: serverTimestamp() });
-        toast({ title: "Succès", description: "Nouveau hangar créé." });
+        const newHangar: Hangar = { 
+          id: generateId(), 
+          ...values, 
+          createdAt: new Date() 
+        };
+        setHangars(prevHangars => [...prevHangars, newHangar]);
+        toast({ title: "Succès (simulation)", description: "Nouveau hangar créé." });
       }
       form.reset({ name: "", location: "", capacity: 0, status: "ACTIVE" });
       setEditingHangar(null);
       setIsDialogOpen(false);
-      fetchHangars();
     } catch (error) {
       console.error("Error saving hangar:", error);
-      toast({ title: "Erreur", description: "Impossible de sauvegarder le hangar.", variant: "destructive" });
+      toast({ title: "Erreur (simulation)", description: "Impossible de sauvegarder le hangar.", variant: "destructive" });
     }
   };
   
@@ -95,16 +81,9 @@ export default function HangarsAdminPage() {
   };
 
   const handleDeleteHangar = async (hangarId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce hangar? Cette action est irréversible.")) return;
-    try {
-      // Add checks here if hangar has batches, etc. before deleting
-      await deleteDoc(doc(db, "hangars", hangarId));
-      toast({ title: "Succès", description: "Hangar supprimé." });
-      fetchHangars();
-    } catch (error) {
-      console.error("Error deleting hangar:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le hangar. Vérifiez s'il est utilisé.", variant: "destructive" });
-    }
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce hangar? Cette action est irréversible (simulation).")) return;
+    setHangars(prevHangars => prevHangars.filter(h => h.id !== hangarId));
+    toast({ title: "Succès (simulation)", description: "Hangar supprimé." });
   };
 
   if (authLoading || (userProfile && !["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role) && !loadingData)) {
@@ -116,7 +95,7 @@ export default function HangarsAdminPage() {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestion des Hangars</h1>
-          <p className="text-muted-foreground">Ajoutez, modifiez ou supprimez des hangars de stockage.</p>
+          <p className="text-muted-foreground">Ajoutez, modifiez ou supprimez des hangars de stockage (simulation locale).</p>
         </div>
          {userProfile?.role === "SUPER_ADMIN" && (
           <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
@@ -220,7 +199,9 @@ export default function HangarsAdminPage() {
                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild><Link href={`/lots?hangarId=${hangar.id}`}>Voir Lots</Link></DropdownMenuItem>
+                               <DropdownMenuItem asChild>
+                                <Link href={`/lots?hangarId=${hangar.id}`}>Voir Lots</Link>
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

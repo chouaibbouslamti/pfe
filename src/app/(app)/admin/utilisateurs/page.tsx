@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,7 @@ import { MoreHorizontal, UserPlus, CheckCircle, XCircle, ShieldQuestion, Search 
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { UserProfile, UserRole } from "@/types"; // Assuming types are defined
-import { collection, getDocs, doc, updateDoc, query, orderBy, where } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
+import type { UserProfile, UserRole } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,7 +36,7 @@ const RoleSelect = ({ userId, currentRole, onRoleChange }: { userId: string, cur
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Assigner un nouveau rôle</DialogTitle>
-          <DialogDescription>Sélectionnez le nouveau rôle pour cet utilisateur.</DialogDescription>
+          <DialogDescription>Sélectionnez le nouveau rôle pour cet utilisateur (simulation).</DialogDescription>
         </DialogHeader>
         <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as UserRole)}>
           <SelectTrigger>
@@ -60,77 +59,46 @@ const RoleSelect = ({ userId, currentRole, onRoleChange }: { userId: string, cur
 
 
 export default function UsersAdminPage() {
-  const { userProfile, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading, localUserProfiles, setLocalUserProfiles } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  // const [users, setUsers] = useState<UserProfile[]>([]); // Now managed by authContext
   const [loadingUsers, setLoadingUsers] = useState(true);
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "pending" | "inactive">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "pending" | "inactive">("all"); // "pending" might be less relevant
 
   useEffect(() => {
     if (!authLoading && userProfile?.role !== "SUPER_ADMIN") {
-      router.replace("/dashboard"); // Or an unauthorized page
+      router.replace("/dashboard");
     }
   }, [userProfile, authLoading, router]);
 
   useEffect(() => {
     if (userProfile?.role === "SUPER_ADMIN") {
-      fetchUsers();
-    }
-  }, [userProfile]);
-
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const usersCollectionRef = collection(db, "users");
-      // Simple client-side filtering for now. For larger datasets, use Firestore queries.
-      const q = query(usersCollectionRef, orderBy("createdAt", "desc"));
-      const querySnapshot = await getDocs(q);
-      const usersData = querySnapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile));
-      setUsers(usersData);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast({ title: "Erreur", description: "Impossible de charger les utilisateurs.", variant: "destructive" });
-    } finally {
+      // Data is already in localUserProfiles from AuthContext
       setLoadingUsers(false);
     }
-  };
+  }, [userProfile, localUserProfiles]);
   
   const handleApproveUser = async (userId: string, currentApprovalStatus: boolean) => {
-    try {
-      const userDocRef = doc(db, "users", userId);
-      await updateDoc(userDocRef, { isApproved: !currentApprovalStatus });
-      toast({ title: "Succès", description: `Statut d'approbation de l'utilisateur mis à jour.` });
-      fetchUsers(); // Refresh list
-    } catch (error) {
-      console.error("Error updating user approval status:", error);
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le statut.", variant: "destructive" });
-    }
+    setLocalUserProfiles(prevUsers => 
+        prevUsers.map(u => u.uid === userId ? { ...u, isApproved: !currentApprovalStatus } : u)
+    );
+    toast({ title: "Succès (simulation)", description: `Statut d'approbation de l'utilisateur mis à jour.` });
   };
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
-     try {
-      const userDocRef = doc(db, "users", userId);
-      await updateDoc(userDocRef, { role: newRole });
-      toast({ title: "Succès", description: `Rôle de l'utilisateur mis à jour.` });
-      fetchUsers(); // Refresh list
-    } catch (error) {
-      console.error("Error updating user role:", error);
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le rôle.", variant: "destructive" });
-    }
+     setLocalUserProfiles(prevUsers => 
+        prevUsers.map(u => u.uid === userId ? { ...u, role: newRole } : u)
+     );
+     toast({ title: "Succès (simulation)", description: `Rôle de l'utilisateur mis à jour.` });
   };
   
   const handleToggleActiveUser = async (userId: string, currentIsActive: boolean) => {
-     try {
-      const userDocRef = doc(db, "users", userId);
-      await updateDoc(userDocRef, { isActive: !currentIsActive });
-      toast({ title: "Succès", description: `Statut d'activité de l'utilisateur mis à jour.` });
-      fetchUsers(); // Refresh list
-    } catch (error) {
-      console.error("Error updating user active status:", error);
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le statut.", variant: "destructive" });
-    }
+     setLocalUserProfiles(prevUsers => 
+        prevUsers.map(u => u.uid === userId ? { ...u, isActive: !currentIsActive } : u)
+     );
+     toast({ title: "Succès (simulation)", description: `Statut d'activité de l'utilisateur mis à jour.` });
   };
 
   const roleDisplay: { [key in UserRole]: string } = {
@@ -139,11 +107,11 @@ export default function UsersAdminPage() {
     SUPER_ADMIN: "Super Admin",
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = localUserProfiles.filter(user => {
     const matchesSearch = `${user.firstName} ${user.lastName} ${user.email} ${user.username}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" ||
-      (filterStatus === "approved" && user.isApproved && user.isActive) ||
-      (filterStatus === "pending" && !user.isApproved && user.isActive) ||
+      (filterStatus === "approved" && user.isApproved && user.isActive) || // "pending" is now "approved" for mock
+      (filterStatus === "pending" && !user.isApproved && user.isActive) || // Kept for filter UI, but isApproved is true for mock
       (filterStatus === "inactive" && !user.isActive);
     return matchesSearch && matchesStatus;
   });
@@ -158,7 +126,7 @@ export default function UsersAdminPage() {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Gestion des Utilisateurs</h1>
-            <p className="text-muted-foreground">Approuvez les inscriptions, assignez des rôles et gérez les accès.</p>
+            <p className="text-muted-foreground">Approuvez les inscriptions, assignez des rôles et gérez les accès (simulation locale).</p>
         </div>
         {/* <Button disabled><UserPlus className="mr-2 h-4 w-4" /> Inviter un Utilisateur</Button> */}
       </div>
@@ -184,7 +152,7 @@ export default function UsersAdminPage() {
                 <SelectContent>
                     <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="approved">Approuvé & Actif</SelectItem>
-                    <SelectItem value="pending">En attente</SelectItem>
+                    <SelectItem value="pending">En attente (Approuvé par défaut)</SelectItem>
                     <SelectItem value="inactive">Inactif</SelectItem>
                 </SelectContent>
             </Select>
@@ -227,7 +195,7 @@ export default function UsersAdminPage() {
                           <XCircle className="h-5 w-5 text-red-500" />
                         )}
                       </TableCell>
-                      <TableCell>{user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('fr-FR') : 'N/A'}</TableCell>
+                      <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -238,7 +206,8 @@ export default function UsersAdminPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleApproveUser(user.uid, user.isApproved)}>
+                            <DropdownMenuItem onClick={() => handleApproveUser(user.uid, user.isApproved)} disabled={user.isApproved}>
+                              {/* User is auto-approved in mock, so this is mostly illustrative */}
                               {user.isApproved ? "Révoquer l'approbation" : "Approuver"}
                             </DropdownMenuItem>
                             <RoleSelect userId={user.uid} currentRole={user.role} onRoleChange={handleRoleChange} />

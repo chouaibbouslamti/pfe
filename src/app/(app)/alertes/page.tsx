@@ -1,24 +1,48 @@
+
+"use client"; // Added "use client" as we will use useState for mock data management
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BellRing, Info, TriangleAlert, ShieldAlert, CheckCircle2 } from "lucide-react";
-import type { Metadata } from "next";
+import { BellRing, Info, TriangleAlert, ShieldAlert, CheckCircle2, PlusCircle } from "lucide-react";
+// import type { Metadata } from "next"; // Metadata is for server components
 import Link from "next/link";
+import { useState, useMemo } from "react";
+import { mockAlertsData, generateId } from "@/lib/mockData"; // Import mock data
+import type { Alert as AlertType } from "@/types"; // Ensure AlertType matches our type
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-export const metadata: Metadata = {
-  title: "Alertes - Gestion Hangar Intelligent",
-  description: "Consultez et gérez les alertes du système.",
-};
+// export const metadata: Metadata = { // Removed metadata for client component
+//   title: "Alertes - Gestion Hangar Intelligent",
+//   description: "Consultez et gérez les alertes du système.",
+// };
 
-// Mock data for alerts
-const mockAlerts = [
-  { id: "A001", title: "Expiration Imminente Lot #L0T78", message: "Le lot #L0T78 dans Hangar Bravo expire dans 2 jours.", type: "STORAGE_EXPIRY", severity: "CRITICAL", status: "ACTIVE", hangarId: "H002", batchId: "L0T78", createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: "A002", title: "Intervention Requise Hangar Alpha", message: "Température anormale détectée dans Hangar Alpha.", type: "INTERVENTION_NEEDED", severity: "EMERGENCY", status: "ACTIVE", hangarId: "H001", createdAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: "A003", title: "Maintenance Préventive Hangar Gamma", message: "Équipement de ventilation nécessite une vérification.", type: "INTERVENTION_NEEDED", severity: "WARNING", status: "ACKNOWLEDGED", hangarId: "H003", createdAt: new Date(Date.now() - 259200000).toISOString() },
-  { id: "A004", title: "Lot #L0T55 Résolu", message: "Problème de stockage pour le lot #L0T55 résolu.", type: "STORAGE_EXPIRY", severity: "INFO", status: "RESOLVED", hangarId: "H001", batchId: "L0T55", createdAt: new Date(Date.now() - 345600000).toISOString() },
-];
+const alertSchema = z.object({
+  title: z.string().min(3, "Le titre est requis."),
+  message: z.string().min(10, "Le message est requis (min 10 caractères)."),
+  type: z.enum(["STORAGE_EXPIRY", "INTERVENTION_NEEDED", "LOW_STOCK", "EQUIPMENT_FAILURE"]),
+  severity: z.enum(["CRITICAL", "EMERGENCY", "WARNING", "INFO"]),
+  hangarId: z.string().optional(),
+  batchId: z.string().optional(),
+});
+type AlertFormData = z.infer<typeof alertSchema>;
+
 
 const getSeverityIcon = (severity: string) => {
   switch (severity) {
@@ -41,14 +65,118 @@ const getStatusBadge = (status: string) => {
 
 
 export default function AlertsPage() {
+  const [alerts, setAlerts] = useState<AlertType[]>(mockAlertsData);
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isCreateAlertOpen, setIsCreateAlertOpen] = useState(false);
+
+  const form = useForm<AlertFormData>({
+    resolver: zodResolver(alertSchema),
+    defaultValues: {
+      title: "",
+      message: "",
+      type: "INTERVENTION_NEEDED",
+      severity: "INFO",
+    },
+  });
+
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter(alert => 
+      (severityFilter === "all" || alert.severity === severityFilter) &&
+      (statusFilter === "all" || alert.status === statusFilter)
+    );
+  }, [alerts, severityFilter, statusFilter]);
+
+  const handleCreateAlert = (values: AlertFormData) => {
+    const newAlert: AlertType = {
+      ...values,
+      id: generateId(),
+      status: "ACTIVE",
+      createdAt: new Date(),
+      detectedAt: new Date(),
+    };
+    setAlerts(prev => [newAlert, ...prev]);
+    setIsCreateAlertOpen(false);
+    form.reset();
+  };
+
+  const acknowledgeAlert = (alertId: string) => {
+    setAlerts(prev => prev.map(a => a.id === alertId ? {...a, status: "ACKNOWLEDGED", acknowledgedAt: new Date()} : a));
+  };
+
+  const resolveAlert = (alertId: string) => {
+     setAlerts(prev => prev.map(a => a.id === alertId ? {...a, status: "RESOLVED", resolvedAt: new Date()} : a));
+  };
+
+
   return (
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Gestion des Alertes</h1>
-            <p className="text-muted-foreground">Suivez et gérez toutes les alertes critiques du système.</p>
+            <p className="text-muted-foreground">Suivez et gérez toutes les alertes critiques du système (simulation locale).</p>
         </div>
-        <Button className="mt-4 md:mt-0">Créer une Alerte Manuelle</Button>
+        <Dialog open={isCreateAlertOpen} onOpenChange={setIsCreateAlertOpen}>
+          <DialogTrigger asChild>
+            <Button className="mt-4 md:mt-0" onClick={() => form.reset()}><PlusCircle className="mr-2 h-4 w-4" />Créer une Alerte Manuelle</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Créer une Nouvelle Alerte Manuelle</DialogTitle>
+              <DialogDescription>Remplissez les informations pour la nouvelle alerte.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={form.handleSubmit(handleCreateAlert)} className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="title">Titre</Label>
+                <Input id="title" {...form.register("title")} />
+                {form.formState.errors.title && <p className="text-sm text-destructive mt-1">{form.formState.errors.title.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="message">Message</Label>
+                <Textarea id="message" {...form.register("message")} />
+                {form.formState.errors.message && <p className="text-sm text-destructive mt-1">{form.formState.errors.message.message}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="type">Type</Label>
+                  <Controller name="type" control={form.control} render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STORAGE_EXPIRY">Expiration Stockage</SelectItem>
+                        <SelectItem value="INTERVENTION_NEEDED">Intervention Requise</SelectItem>
+                        <SelectItem value="LOW_STOCK">Stock Bas</SelectItem>
+                        <SelectItem value="EQUIPMENT_FAILURE">Panne Équipement</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )} />
+                </div>
+                <div>
+                  <Label htmlFor="severity">Sévérité</Label>
+                   <Controller name="severity" control={form.control} render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CRITICAL">Critique</SelectItem>
+                        <SelectItem value="EMERGENCY">Urgence</SelectItem>
+                        <SelectItem value="WARNING">Avertissement</SelectItem>
+                        <SelectItem value="INFO">Information</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label htmlFor="hangarId">ID Hangar (optionnel)</Label><Input id="hangarId" {...form.register("hangarId")} /></div>
+                <div><Label htmlFor="batchId">ID Lot (optionnel)</Label><Input id="batchId" {...form.register("batchId")} /></div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsCreateAlertOpen(false)}>Annuler</Button>
+                <Button type="submit">Créer Alerte</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -56,7 +184,7 @@ export default function AlertsPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <CardTitle>Liste des Alertes</CardTitle>
                 <div className="flex gap-2">
-                    <Select defaultValue="all">
+                    <Select value={severityFilter} onValueChange={setSeverityFilter}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Filtrer par sévérité" />
                         </SelectTrigger>
@@ -68,7 +196,7 @@ export default function AlertsPage() {
                             <SelectItem value="INFO">Information</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Select defaultValue="all">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Filtrer par statut" />
                         </SelectTrigger>
@@ -83,7 +211,7 @@ export default function AlertsPage() {
             </div>
         </CardHeader>
         <CardContent>
-          {mockAlerts.length > 0 ? (
+          {filteredAlerts.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -98,7 +226,7 @@ export default function AlertsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockAlerts.map((alert) => (
+                  {filteredAlerts.map((alert) => (
                     <TableRow key={alert.id}>
                       <TableCell>{getSeverityIcon(alert.severity)}</TableCell>
                       <TableCell className="font-medium">{alert.title}</TableCell>
@@ -108,8 +236,10 @@ export default function AlertsPage() {
                       </TableCell>
                       <TableCell className="text-sm">{new Date(alert.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                       <TableCell>{getStatusBadge(alert.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" asChild>
+                      <TableCell className="text-right space-x-2">
+                        {alert.status === "ACTIVE" && <Button variant="outline" size="sm" onClick={() => acknowledgeAlert(alert.id)}>Accuser</Button>}
+                        {alert.status === "ACKNOWLEDGED" && <Button variant="outline" size="sm" onClick={() => resolveAlert(alert.id)}>Résoudre</Button>}
+                        <Button variant="default" size="sm" asChild>
                           <Link href={`/interventions/creer?alerteId=${alert.id}`}>Gérer</Link>
                         </Button>
                       </TableCell>

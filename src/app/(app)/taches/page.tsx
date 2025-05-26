@@ -1,23 +1,82 @@
+
+"use client"; // Added "use client" for state management
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+// import { Checkbox } from "@/components/ui/checkbox"; // Checkbox not used in current display
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ListChecks, Clock, CalendarCheck2, AlertTriangle } from "lucide-react";
-import type { Metadata } from "next";
+// import type { Metadata } from "next"; // Metadata for server components
 import Link from "next/link";
+import { useState, useMemo } from "react"; // Added useState, useMemo
+import { mockInterventionsData } from "@/lib/mockData"; // Assuming tasks are derived from interventions
+import { useAuth } from "@/contexts/auth-context";
 
-export const metadata: Metadata = {
-  title: "Mes Tâches - Gestion Hangar Intelligent",
-  description: "Consultez les tâches qui vous sont assignées.",
+// export const metadata: Metadata = { // Removed for client component
+//   title: "Mes Tâches - Gestion Hangar Intelligent",
+//   description: "Consultez les tâches qui vous sont assignées.",
+// };
+
+// Simplified Task type for this mock page
+interface MockTask {
+  id: string;
+  interventionId: string;
+  title: string;
+  description: string;
+  scheduledTime: string; // Keep as string for simplicity, or Date
+  hangar: string;
+  priority: "Haute" | "Moyenne" | "Basse";
+  status: "À faire" | "En cours" | "Terminée";
+  assignedToTeam?: string; // If tasks are team-specific
+}
+
+// Derive mock tasks from mockInterventions for the current user's team or generic tasks
+const generateMockTasks = (userId?: string, userTeamId?: string): MockTask[] => {
+    // For this demo, let's show a few generic tasks or tasks related to user's team
+    // This logic can be more sophisticated if needed.
+    const tasks: MockTask[] = [];
+    mockInterventionsData.forEach((inv, index) => {
+        // Assign some tasks to the current user's team, or show all if super/manager
+        // Or just create generic tasks based on interventions
+        if (inv.status === "PLANNED" || inv.status === "IN_PROGRESS") {
+             tasks.push({
+                id: `TASK${inv.id.replace('INT', '')}`,
+                interventionId: inv.id,
+                title: inv.title,
+                description: inv.description,
+                scheduledTime: new Date(inv.scheduledTime).toISOString(),
+                hangar: `Hangar ${inv.hangarId.replace('H00', '')}`, // Basic display
+                priority: index % 3 === 0 ? "Haute" : index % 3 === 1 ? "Moyenne" : "Basse",
+                status: inv.status === "PLANNED" ? "À faire" : "En cours",
+                assignedToTeam: inv.teamId,
+            });
+        } else if (inv.status === "COMPLETED" && tasks.length < 5) { // Show a few completed
+             tasks.push({
+                id: `TASK${inv.id.replace('INT', '')}`,
+                interventionId: inv.id,
+                title: inv.title,
+                description: inv.description,
+                scheduledTime: new Date(inv.scheduledTime).toISOString(),
+                hangar: `Hangar ${inv.hangarId.replace('H00', '')}`,
+                priority: "Basse",
+                status: "Terminée",
+                assignedToTeam: inv.teamId,
+            });
+        }
+    });
+    
+    // Filter for user's team if teamId is available and user is 'USER'
+    if (userTeamId && userId) { // Check if userProfile exists
+        const user = mockUserProfiles.find(u => u.uid === userId);
+        if (user && user.role === 'USER') {
+            return tasks.filter(task => task.assignedToTeam === userTeamId || !task.assignedToTeam); // Show unassigned or team tasks
+        }
+    }
+    return tasks.slice(0, 5); // Return a subset for general view
 };
 
-// Mock data for tasks (derived from interventions for a specific user)
-const mockTasks = [
-  { id: "TASK001", interventionId: "INT001", title: "Contrôle qualité Lot #L0T78", description: "Vérifier l'état et la température du lot. Noter toute anomalie.", scheduledTime: new Date(Date.now() + 86400000 * 1).toISOString(), hangar: "Hangar Bravo", priority: "Haute", status: "À faire" },
-  { id: "TASK002", interventionId: "INT003", title: "Participer à la rotation des stocks", description: "Aider à déplacer les lots selon le plan.", scheduledTime: new Date(Date.now() - 86400000 * 3).toISOString(), hangar: "Hangar Bravo", priority: "Moyenne", status: "En cours" },
-  { id: "TASK003", interventionId: "INT004", title: "Assister au nettoyage du Hangar Gamma", description: "Suivre les protocoles de nettoyage et de sécurité.", scheduledTime: new Date(Date.now() - 86400000 * 7).toISOString(), hangar: "Hangar Gamma", priority: "Basse", status: "Terminée" },
-];
+import { mockUserProfiles } from "@/lib/mockData"; // Import mock user profiles
 
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
@@ -39,11 +98,24 @@ const getStatusIcon = (status: string) => {
 
 
 export default function TasksPage() {
+  const { userProfile } = useAuth();
+  const [tasks, setTasks] = useState<MockTask[]>([]);
+
+  useEffect(() => {
+    if (userProfile) {
+      setTasks(generateMockTasks(userProfile.uid, userProfile.teamId));
+    } else {
+      // Handle case where userProfile is not yet loaded, or show generic tasks
+      setTasks(generateMockTasks()); 
+    }
+  }, [userProfile]);
+
+
   return (
     <div className="container mx-auto py-2">
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Mes Tâches Assignées</h1>
-        <p className="text-muted-foreground">Voici la liste des tâches qui vous ont été confiées.</p>
+        <p className="text-muted-foreground">Voici la liste des tâches qui vous ont été confiées (simulation locale).</p>
       </div>
 
       <Card>
@@ -52,7 +124,7 @@ export default function TasksPage() {
           <CardDescription>Tâches planifiées, en cours et terminées.</CardDescription>
         </CardHeader>
         <CardContent>
-          {mockTasks.length > 0 ? (
+          {tasks.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -66,7 +138,7 @@ export default function TasksPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockTasks.map((task) => (
+                  {tasks.map((task) => (
                     <TableRow key={task.id} className={task.status === "Terminée" ? "opacity-60" : ""}>
                       <TableCell className="text-center">{getStatusIcon(task.status)}</TableCell>
                       <TableCell className="font-medium">{task.title}</TableCell>
@@ -75,7 +147,8 @@ export default function TasksPage() {
                       <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/interventions/${task.interventionId}?tache=${task.id}`}>Voir Détails</Link>
+                          {/* Link to a generic intervention page for now, as task-specific page might not exist */}
+                          <Link href={`/interventions`}>Voir Détails (désactivé)</Link>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -95,3 +168,4 @@ export default function TasksPage() {
     </div>
   );
 }
+

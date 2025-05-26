@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,20 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/config";
+import { useAuth } from "@/contexts/auth-context"; // Use our mock auth
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Adresse e-mail invalide." }),
-  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
+  password: z.string().min(1, { message: "Le mot de passe est requis." }), // Min 1 for mock
 });
 
 export function LoginForm() {
@@ -27,6 +25,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { login } = useAuth(); // Get login from mock context
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,42 +37,28 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-      
-      // Update lastLogin timestamp
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        lastLogin: serverTimestamp(),
-      });
-
+    const success = await login(values.email, values.password); // Call mock login
+    if (success) {
       toast({
-        title: "Connexion réussie",
+        title: "Connexion réussie (simulation)",
         description: "Vous êtes maintenant connecté.",
       });
-      router.push("/dashboard");
-    } catch (error: any) {
-      console.error("Login error: ", error);
-      let errorMessage = "Erreur de connexion. Veuillez réessayer.";
-      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
-        errorMessage = "Email ou mot de passe incorrect.";
-      }
+      // AuthProvider handles redirection
+    } else {
       toast({
-        title: "Erreur de connexion",
-        description: errorMessage,
+        title: "Erreur de connexion (simulation)",
+        description: "Email ou mot de passe incorrect, ou utilisateur inactif/non approuvé.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   return (
     <Card className="w-full shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Connexion</CardTitle>
-        <CardDescription>Entrez vos identifiants pour accéder à votre compte.</CardDescription>
+        <CardDescription>Entrez vos identifiants pour accéder à votre compte (simulation locale).</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -85,7 +70,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="exemple@domaine.com" {...field} />
+                    <Input placeholder="super@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -134,6 +119,9 @@ export function LoginForm() {
           <Link href="/inscription" className="font-medium text-primary hover:underline">
             S'inscrire
           </Link>
+        </p>
+         <p className="text-xs text-muted-foreground mt-2">
+            Exemples: super@example.com, manager@example.com, user@example.com (mdp: password)
         </p>
       </CardFooter>
     </Card>

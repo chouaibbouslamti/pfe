@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,6 @@ import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Team, UserProfile } from "@/types";
-import { collection, addDoc, getDocs, serverTimestamp, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +19,7 @@ import * as z from "zod";
 import { Building2, PlusCircle, Edit, Users, Trash2, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { mockTeams, mockUserProfiles, generateId } from "@/lib/mockData";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Le nom de l'équipe est requis (min 3 caractères)."),
@@ -28,10 +28,10 @@ const teamSchema = z.object({
 });
 
 export default function TeamsAdminPage() {
-  const { userProfile, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading, localUserProfiles, setLocalUserProfiles: setLocalUsers } = useAuth();
   const router = useRouter();
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]); // For selecting manager and members
+  const [teams, setTeams] = useState<Team[]>(mockTeams);
+  const [users, setUsers] = useState<UserProfile[]>(localUserProfiles); 
   const [loadingData, setLoadingData] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -39,8 +39,6 @@ export default function TeamsAdminPage() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [teamToManageMembers, setTeamToManageMembers] = useState<Team | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-
-
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof teamSchema>>({
@@ -56,25 +54,10 @@ export default function TeamsAdminPage() {
 
   useEffect(() => {
     if (userProfile?.role === "SUPER_ADMIN") {
-      fetchTeamsAndUsers();
-    }
-  }, [userProfile]);
-
-  const fetchTeamsAndUsers = async () => {
-    setLoadingData(true);
-    try {
-      const teamsSnapshot = await getDocs(collection(db, "teams"));
-      setTeams(teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team)));
-
-      const usersSnapshot = await getDocs(query(collection(db, "users"), where("isApproved", "==", true), where("isActive", "==", true)));
-      setUsers(usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({ title: "Erreur", description: "Impossible de charger les données.", variant: "destructive" });
-    } finally {
+      setUsers(localUserProfiles); // Update users when localUserProfiles change
       setLoadingData(false);
     }
-  };
+  }, [userProfile, localUserProfiles]);
   
   const getUserName = (uid: string) => {
     const user = users.find(u => u.uid === uid);
@@ -84,35 +67,33 @@ export default function TeamsAdminPage() {
   const onSubmit = async (values: z.infer<typeof teamSchema>) => {
     try {
       if (editingTeam) { // Update existing team
-        const teamDocRef = doc(db, "teams", editingTeam.id);
-        await updateDoc(teamDocRef, values);
-        toast({ title: "Succès", description: "Équipe mise à jour." });
+        setTeams(prevTeams => prevTeams.map(t => t.id === editingTeam.id ? { ...editingTeam, ...values } : t));
+        toast({ title: "Succès (simulation)", description: "Équipe mise à jour." });
         setEditingTeam(null);
         setIsEditDialogOpen(false);
       } else { // Create new team
-         const docRef = await addDoc(collection(db, "teams"), {
+        const newTeam: Team = {
+          id: generateId(),
           ...values,
-          members: [values.managerId], // Manager is automatically a member
-          createdAt: serverTimestamp(),
-        });
-        // Set teamId for manager and default role to TEAM_MANAGER if not already.
-        const managerDocRef = doc(db, "users", values.managerId);
-        const managerSnap = await getDoc(managerDocRef);
-        if (managerSnap.exists()) {
-          const managerData = managerSnap.data();
-          await updateDoc(managerDocRef, {
-            teamId: docRef.id,
-            role: managerData.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "TEAM_MANAGER" 
-          });
+          members: [values.managerId], 
+          createdAt: new Date(),
+        };
+        setTeams(prevTeams => [...prevTeams, newTeam]);
+        
+        // Update manager's teamId and role in localUsers
+        const managerProfile = users.find(u => u.uid === values.managerId);
+        if (managerProfile) {
+          setLocalUsers(prevLocalUsers => prevLocalUsers.map(u => 
+            u.uid === values.managerId ? { ...u, teamId: newTeam.id, role: u.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "TEAM_MANAGER" } : u
+          ));
         }
-        toast({ title: "Succès", description: "Nouvelle équipe créée." });
+        toast({ title: "Succès (simulation)", description: "Nouvelle équipe créée." });
         setIsCreateDialogOpen(false);
       }
       form.reset();
-      fetchTeamsAndUsers();
     } catch (error) {
       console.error("Error saving team:", error);
-      toast({ title: "Erreur", description: "Impossible de sauvegarder l'équipe.", variant: "destructive" });
+      toast({ title: "Erreur (simulation)", description: "Impossible de sauvegarder l'équipe.", variant: "destructive" });
     }
   };
   
@@ -137,28 +118,28 @@ export default function TeamsAdminPage() {
   const saveTeamMembers = async () => {
     if (!teamToManageMembers) return;
     try {
-      const teamDocRef = doc(db, "teams", teamToManageMembers.id);
-      await updateDoc(teamDocRef, { members: selectedMembers });
-
-      // Update teamId for newly added members and remove for removed members (if not manager)
       const oldMembers = teamToManageMembers.members || [];
+      
+      setTeams(prevTeams => prevTeams.map(t => 
+        t.id === teamToManageMembers.id ? { ...t, members: selectedMembers } : t
+      ));
+
+      // Update teamId for users locally
       const addedMembers = selectedMembers.filter(id => !oldMembers.includes(id));
       const removedMembers = oldMembers.filter(id => !selectedMembers.includes(id) && id !== teamToManageMembers.managerId);
 
-      for (const memberId of addedMembers) {
-        await updateDoc(doc(db, "users", memberId), { teamId: teamToManageMembers.id });
-      }
-      for (const memberId of removedMembers) {
-        await updateDoc(doc(db, "users", memberId), { teamId: "" }); // Or firebase.firestore.FieldValue.delete()
-      }
+      setLocalUsers(prevLocalUsers => prevLocalUsers.map(u => {
+        if (addedMembers.includes(u.uid)) return { ...u, teamId: teamToManageMembers.id };
+        if (removedMembers.includes(u.uid)) return { ...u, teamId: undefined }; // Or an empty string
+        return u;
+      }));
 
-      toast({ title: "Succès", description: "Membres de l'équipe mis à jour." });
+      toast({ title: "Succès (simulation)", description: "Membres de l'équipe mis à jour." });
       setIsManageMembersDialogOpen(false);
       setTeamToManageMembers(null);
-      fetchTeamsAndUsers();
     } catch (error) {
       console.error("Error updating team members:", error);
-      toast({ title: "Erreur", description: "Impossible de mettre à jour les membres.", variant: "destructive" });
+      toast({ title: "Erreur (simulation)", description: "Impossible de mettre à jour les membres.", variant: "destructive" });
     }
   };
 
@@ -172,7 +153,7 @@ export default function TeamsAdminPage() {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestion des Équipes</h1>
-          <p className="text-muted-foreground">Créez et gérez les équipes d'intervention.</p>
+          <p className="text-muted-foreground">Créez et gérez les équipes d'intervention (simulation locale).</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -204,7 +185,7 @@ export default function TeamsAdminPage() {
                         <SelectContent>
                             <SelectGroup>
                             <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users.filter(u => u.role !== 'USER').map(user => ( // Managers or Super Admins can be team leads
+                            {users.filter(u => u.role !== 'USER' && u.isActive).map(user => ( 
                                 <SelectItem key={user.uid} value={user.uid}>
                                 {user.firstName} {user.lastName} ({user.email})
                                 </SelectItem>
@@ -230,7 +211,6 @@ export default function TeamsAdminPage() {
         </Dialog>
       </div>
       
-      {/* Edit Team Dialog (similar structure to create, but separate state) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -256,7 +236,7 @@ export default function TeamsAdminPage() {
                         <SelectContent>
                             <SelectGroup>
                             <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users.filter(u => u.role !== 'USER').map(user => (
+                            {users.filter(u => u.role !== 'USER' && u.isActive).map(user => (
                                 <SelectItem key={user.uid} value={user.uid}>
                                 {user.firstName} {user.lastName} ({user.email})
                                 </SelectItem>
@@ -281,7 +261,6 @@ export default function TeamsAdminPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Manage Members Dialog */}
         <Dialog open={isManageMembersDialogOpen} onOpenChange={setIsManageMembersDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -289,13 +268,13 @@ export default function TeamsAdminPage() {
               <DialogDescription>Sélectionnez les utilisateurs à ajouter ou retirer de cette équipe.</DialogDescription>
             </DialogHeader>
             <div className="py-4 max-h-96 overflow-y-auto space-y-2">
-              {users.filter(u => u.uid !== teamToManageMembers?.managerId).map(user => ( // Exclude manager from this list as they are implicitly part of the team
+              {users.filter(u => u.uid !== teamToManageMembers?.managerId && u.isActive).map(user => ( 
                 <div key={user.uid} className="flex items-center space-x-2 p-2 border rounded-md">
                   <Checkbox
                     id={`member-${user.uid}`}
                     checked={selectedMembers.includes(user.uid)}
                     onCheckedChange={() => handleMemberSelection(user.uid)}
-                    disabled={user.uid === teamToManageMembers?.managerId} // Manager cannot be unselected
+                    disabled={user.uid === teamToManageMembers?.managerId} 
                   />
                   <label htmlFor={`member-${user.uid}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     {user.firstName} {user.lastName} ({user.email})
@@ -348,8 +327,16 @@ export default function TeamsAdminPage() {
                             <DropdownMenuItem onClick={() => openEditDialog(team)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openManageMembersDialog(team)}><Users className="mr-2 h-4 w-4" /> Gérer Membres</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" disabled>
-                              <Trash2 className="mr-2 h-4 w-4" /> Supprimer (Désactivé)
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10" 
+                              onClick={() => {
+                                if(confirm("Supprimer cette équipe ? (Simulation)")) {
+                                  setTeams(prev => prev.filter(t => t.id !== team.id));
+                                  toast({title: "Équipe supprimée (simulation)"});
+                                }
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

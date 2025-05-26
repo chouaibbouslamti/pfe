@@ -1,10 +1,11 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,10 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { Batch, Hangar, Team } from "@/types";
-import { collection, addDoc, getDocs, serverTimestamp, doc, updateDoc, deleteDoc, Timestamp, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +23,9 @@ import { PackageSearch, PlusCircle, Edit, Trash2, MoreHorizontal, CalendarIcon, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import Link from "next/link";
+import { mockBatches, mockHangars, mockTeams, generateId } from "@/lib/mockData";
+
 
 const batchSchema = z.object({
   fertilizerType: z.string().min(3, "Le type d'engrais est requis."),
@@ -45,10 +47,10 @@ export default function BatchesPage() {
   const searchParams = useSearchParams();
   const hangarIdFilter = searchParams.get('hangarId');
 
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [hangars, setHangars] = useState<Hangar[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [allBatches, setAllBatches] = useState<Batch[]>(mockBatches);
+  const [hangars] = useState<Hangar[]>(mockHangars); // Mock data, no need to fetch
+  const [teams] = useState<Team[]>(mockTeams); // Mock data
+  const [loadingData, setLoadingData] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const { toast } = useToast();
@@ -59,7 +61,6 @@ export default function BatchesPage() {
       fertilizerType: "",
       quantity: 0,
       unit: "tonnes",
-      // dates will be set when opening dialog
       maxStorageDays: 30,
       hangarId: hangarIdFilter || "",
       status: "STOCKED",
@@ -78,67 +79,34 @@ export default function BatchesPage() {
     }
   }, [userProfile, authLoading, router]);
 
-  useEffect(() => {
-    if (userProfile && ["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role)) {
-      fetchData();
-    }
-  }, [userProfile, hangarIdFilter]);
+  const filteredBatches = useMemo(() => {
+    if (!hangarIdFilter) return allBatches;
+    return allBatches.filter(batch => batch.hangarId === hangarIdFilter);
+  }, [allBatches, hangarIdFilter]);
 
-  const fetchData = async () => {
-    setLoadingData(true);
-    try {
-      const hangarsSnapshot = await getDocs(collection(db, "hangars"));
-      setHangars(hangarsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Hangar)));
-
-      const teamsSnapshot = await getDocs(collection(db, "teams"));
-      setTeams(teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team)));
-      
-      let batchesQuery = collection(db, "batches");
-      if (hangarIdFilter) {
-          batchesQuery = query(batchesQuery, where("hangarId", "==", hangarIdFilter)) as any;
-      }
-      const batchesSnapshot = await getDocs(batchesQuery);
-      setBatches(batchesSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return { 
-          id: doc.id, 
-          ...data,
-          stockedDate: (data.stockedDate as Timestamp).toDate(),
-          expectedTransportDate: (data.expectedTransportDate as Timestamp).toDate(),
-        } as Batch;
-      }));
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({ title: "Erreur", description: "Impossible de charger les données.", variant: "destructive" });
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const onSubmit = async (values: BatchFormData) => {
     try {
-      const dataToSave = {
-        ...values,
-        stockedDate: Timestamp.fromDate(values.stockedDate),
-        expectedTransportDate: Timestamp.fromDate(values.expectedTransportDate),
-      };
-
       if (editingBatch) {
-        const batchDocRef = doc(db, "batches", editingBatch.id);
-        await updateDoc(batchDocRef, dataToSave);
-        toast({ title: "Succès", description: "Lot mis à jour." });
+        setAllBatches(prevBatches => 
+          prevBatches.map(b => b.id === editingBatch.id ? { ...editingBatch, ...values } : b)
+        );
+        toast({ title: "Succès (simulation)", description: "Lot mis à jour." });
       } else {
-        await addDoc(collection(db, "batches"), { ...dataToSave, createdAt: serverTimestamp() });
-        toast({ title: "Succès", description: "Nouveau lot créé." });
+        const newBatch: Batch = { 
+          id: generateId(), 
+          ...values, 
+          createdAt: new Date() 
+        };
+        setAllBatches(prevBatches => [...prevBatches, newBatch]);
+        toast({ title: "Succès (simulation)", description: "Nouveau lot créé." });
       }
       form.reset({ fertilizerType: "", quantity: 0, unit: "tonnes", maxStorageDays: 30, hangarId: hangarIdFilter || "", status: "STOCKED" });
       setEditingBatch(null);
       setIsDialogOpen(false);
-      fetchData();
     } catch (error) {
       console.error("Error saving batch:", error);
-      toast({ title: "Erreur", description: "Impossible de sauvegarder le lot.", variant: "destructive" });
+      toast({ title: "Erreur (simulation)", description: "Impossible de sauvegarder le lot.", variant: "destructive" });
     }
   };
   
@@ -146,22 +114,16 @@ export default function BatchesPage() {
     setEditingBatch(batch);
     form.reset({
         ...batch,
-        stockedDate: batch.stockedDate instanceof Timestamp ? batch.stockedDate.toDate() : batch.stockedDate,
-        expectedTransportDate: batch.expectedTransportDate instanceof Timestamp ? batch.expectedTransportDate.toDate() : batch.expectedTransportDate,
+        stockedDate: new Date(batch.stockedDate), // Ensure it's a Date object
+        expectedTransportDate: new Date(batch.expectedTransportDate), // Ensure it's a Date object
     });
     setIsDialogOpen(true);
   };
 
   const handleDeleteBatch = async (batchId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce lot? Cette action est irréversible.")) return;
-    try {
-      await deleteDoc(doc(db, "batches", batchId));
-      toast({ title: "Succès", description: "Lot supprimé." });
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting batch:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le lot.", variant: "destructive" });
-    }
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce lot? Cette action est irréversible (simulation).")) return;
+    setAllBatches(prevBatches => prevBatches.filter(b => b.id !== batchId));
+    toast({ title: "Succès (simulation)", description: "Lot supprimé." });
   };
   
   const getHangarName = (id: string) => hangars.find(h => h.id === id)?.name || "N/A";
@@ -175,7 +137,7 @@ export default function BatchesPage() {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestion des Lots d'Engrais</h1>
-          <p className="text-muted-foreground">Suivez les lots stockés, leur statut et dates clés.</p>
+          <p className="text-muted-foreground">Suivez les lots stockés, leur statut et dates clés (simulation locale).</p>
         </div>
          <div className="flex gap-2 mt-4 md:mt-0">
             <Button variant="outline" onClick={() => router.push('/lots')} disabled={!hangarIdFilter}>
@@ -223,7 +185,7 @@ export default function BatchesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><Label htmlFor="hangarId">Hangar</Label><Controller name="hangarId" control={form.control} render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value}><SelectTrigger id="hangarId"><SelectValue placeholder="Sélectionner un hangar" /></SelectTrigger>
-                            <SelectContent>{hangars.map(h => <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select>
+                            <SelectContent>{hangars.filter(h => h.status === 'ACTIVE').map(h => <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select>
                         )} />{form.formState.errors.hangarId && <p className="text-sm text-destructive mt-1">{form.formState.errors.hangarId.message}</p>}</div>
                         <div><Label htmlFor="teamId">Équipe (optionnel)</Label><Controller name="teamId" control={form.control} render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value}><SelectTrigger id="teamId"><SelectValue placeholder="Sélectionner une équipe" /></SelectTrigger>
@@ -247,9 +209,9 @@ export default function BatchesPage() {
       <Card>
         <CardHeader><CardTitle>Liste des Lots {hangarIdFilter ? `dans ${getHangarName(hangarIdFilter)}`: ''}</CardTitle></CardHeader>
         <CardContent>
-          {loadingData ? (
+          {loadingData ? ( // Should be false quickly for mock data
             <div className="text-center py-10"><PackageSearch className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" /><p className="mt-2">Chargement des lots...</p></div>
-          ) : batches.length > 0 ? (
+          ) : filteredBatches.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -260,13 +222,13 @@ export default function BatchesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {batches.map((batch) => (
+                  {filteredBatches.map((batch) => (
                     <TableRow key={batch.id}>
                       <TableCell className="font-medium">{batch.fertilizerType}</TableCell>
                       <TableCell>{batch.quantity} {batch.unit}</TableCell>
-                      <TableCell><Link href={`/hangars?hangarId=${batch.hangarId}`} className="hover:underline text-primary">{getHangarName(batch.hangarId)}</Link></TableCell>
-                      <TableCell>{format(batch.stockedDate instanceof Timestamp ? batch.stockedDate.toDate() : batch.stockedDate, "dd/MM/yyyy")}</TableCell>
-                      <TableCell>{format(batch.expectedTransportDate instanceof Timestamp ? batch.expectedTransportDate.toDate() : batch.expectedTransportDate, "dd/MM/yyyy")}</TableCell>
+                      <TableCell><Link href={`/lots?hangarId=${batch.hangarId}`} className="hover:underline text-primary">{getHangarName(batch.hangarId)}</Link></TableCell>
+                      <TableCell>{format(new Date(batch.stockedDate), "dd/MM/yyyy")}</TableCell>
+                      <TableCell>{format(new Date(batch.expectedTransportDate), "dd/MM/yyyy")}</TableCell>
                       <TableCell><Badge variant={batch.status === "SPOILED" ? "destructive" : batch.status === "TRANSPORTED" ? "outline" : "secondary"}>
                         { {STOCKED: "Stocké", PROCESSING: "Traitement", TRANSPORTED: "Transporté", SPOILED: "Détérioré"}[batch.status] }
                         </Badge>

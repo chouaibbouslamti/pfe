@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -6,22 +7,18 @@ import { useAuth } from "@/contexts/auth-context";
 import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, loading } = useAuth(); // userProfile.isApproved is always true in mock
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
       if (currentUser) {
-        if (userProfile?.isApproved) {
-          router.replace("/dashboard");
-        } else {
-          router.replace("/en-attente-approbation");
-        }
+        router.replace("/dashboard");
       } else {
         router.replace("/connexion");
       }
     }
-  }, [currentUser, userProfile, loading, router]);
+  }, [currentUser, loading, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

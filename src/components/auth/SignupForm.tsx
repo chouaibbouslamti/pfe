@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -7,12 +8,8 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/config";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context"; // Use our mock auth
 import Link from "next/link";
-import type { UserProfile } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -22,7 +19,7 @@ const formSchema = z.object({
   lastName: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
   username: z.string().min(3, { message: "Le nom d'utilisateur doit contenir au moins 3 caractères." }),
   email: z.string().email({ message: "Adresse e-mail invalide." }),
-  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
+  password: z.string().min(1, { message: "Le mot de passe est requis." }), // Min 1 for mock
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Les mots de passe ne correspondent pas.",
@@ -34,7 +31,7 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
+  const { signup } = useAuth(); // Get signup from mock context
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,55 +47,30 @@ export function SignupForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+    const { confirmPassword, ...signupData } = values;
+    const success = await signup(signupData); // Call mock signup
 
-      await updateProfile(user, {
-        displayName: `${values.firstName} ${values.lastName}`,
-      });
-      
-      const userProfileData: UserProfile = {
-        uid: user.uid,
-        email: user.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        username: values.username,
-        role: "USER", // Default role
-        isActive: true,
-        isApproved: false, // New users are not approved by default
-        createdAt: serverTimestamp() as any,
-        lastLogin: serverTimestamp() as any,
-      };
-
-      await setDoc(doc(db, "users", user.uid), userProfileData);
-
+    if (success) {
       toast({
-        title: "Inscription réussie",
-        description: "Votre compte a été créé. En attente d'approbation par un administrateur.",
+        title: "Inscription réussie (simulation)",
+        description: "Votre compte a été créé et vous êtes connecté.",
       });
-      router.push("/en-attente-approbation");
-    } catch (error: any) {
-      console.error("Signup error: ", error);
-      let errorMessage = "Erreur d'inscription. Veuillez réessayer.";
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Cette adresse e-mail est déjà utilisée.";
-      }
+      // AuthProvider handles redirection
+    } else {
       toast({
-        title: "Erreur d'inscription",
-        description: errorMessage,
+        title: "Erreur d'inscription (simulation)",
+        description: "Cet email est peut-être déjà utilisé.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   return (
     <Card className="w-full shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Inscription</CardTitle>
-        <CardDescription>Créez votre compte pour accéder à la plateforme.</CardDescription>
+        <CardDescription>Créez votre compte (simulation locale).</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
