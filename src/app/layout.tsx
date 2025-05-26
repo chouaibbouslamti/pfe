@@ -2,7 +2,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-// Removed AuthProvider, Toaster, QueryClient, QueryClientProvider imports
 import { AppProviders } from '@/components/providers/AppProviders'; // Import the new provider component
 
 const geistSans = Geist({
@@ -20,8 +19,6 @@ export const metadata: Metadata = {
   description: 'Application de gestion de hangars et interventions d\'engrais.',
 };
 
-// Removed: const queryClient = new QueryClient();
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning={true}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
         <AppProviders> {/* Use the new client component wrapper */}
           {children}
         </AppProviders>
