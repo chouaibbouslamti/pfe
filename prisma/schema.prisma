@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,163 +8,147 @@ datasource db {
 }
 
 model User {
-  id           BigInt        @id @default(autoincrement())
-  email        String        @unique
-  password     String
-  firstName    String?       @map("first_name")
-  lastName     String?       @map("last_name")
-  username     String        @unique @db.VarChar(50)
-  phoneNumber  String?       @map("phone_number")
-  role         UserRole
-  teamId       BigInt?       @map("team_id")
-  isActive     Boolean?      @map("is_active") @db.Bit(1)
-  isApproved   Boolean       @map("is_approved") @db.Bit(1)
-  createdAt    DateTime?     @default(now()) @map("created_at") @db.DateTime(6)
-  lastLogin    DateTime?     @map("last_login") @db.DateTime(6)
-  photoURL     String?       @map("photo_url") @db.VarChar(2048)
-  team         Team?         @relation(fields: [teamId], references: [id])
-  managedTeams Team[]        @relation("TeamManager")
-  TeamMember   TeamMember[]  @relation("TeamMembers")
+  id          BigInt       @id @default(autoincrement())
+  createdAt   DateTime?    @map("created_at") @db.DateTime(6)
+  email       String       @unique(map: "UK_6dotkott2kjsp8vw4d0m25fb7") @db.VarChar(255)
+  firstName   String?      @map("first_name") @db.VarChar(255)
+  isActive    Boolean?     @map("is_active") @db.Bit(1)
+  lastLogin   DateTime?    @map("last_login") @db.DateTime(6)
+  lastName    String?      @map("last_name") @db.VarChar(255)
+  password    String       @db.VarChar(255)
+  phoneNumber String?      @map("phone_number") @db.VarChar(255)
+  role        UserRole
+  username    String       @unique(map: "UK_r43af9ap4edm43mmtq01oddj6") @db.VarChar(50)
+  teamId      BigInt?      @map("team_id")
+  isApproved  Boolean      @map("is_approved") @db.Bit(1)
+  TeamMember  TeamMember[] @relation("TeamMembers")
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FKfjws1rdruab2bqg7qipoqf65r")
 
+  @@index([teamId], map: "FKfjws1rdruab2bqg7qipoqf65r")
   @@map("users")
 }
 
 model Team {
-  id          BigInt        @id @default(autoincrement())
-  name        String        @db.VarChar(100)
-  managerId   BigInt?       @map("manager_id") // This should match the relation name if it exists
-  contact     String?
-  createdAt   DateTime      @default(now()) @map("created_at") @db.DateTime(6)
-  manager     User?         @relation("TeamManager", fields: [managerId], references: [id])
-  users       User[] // Users directly in this team (if team_id is on User)
-  TeamMember  TeamMember[]  @relation("TeamToMember")
-  batches     Batch[]
+  id            BigInt         @id @default(autoincrement())
+  contact       String?        @db.VarChar(255)
+  name          String         @db.VarChar(100)
+  AlertTeam     AlertTeam[]
+  batches       Batch[]
   interventions Intervention[]
-  AlertTeam AlertTeam[]
+  TeamMember    TeamMember[]   @relation("TeamToMember")
+  users         User[]
 
   @@map("teams")
 }
 
-// Explicit many-to-many relation table for Team and User (members)
 model TeamMember {
-  teamId  BigInt   @map("team_id")
-  userId  BigInt   @map("user_id")
-  team    Team     @relation("TeamToMember", fields: [teamId], references: [id])
-  user    User     @relation("TeamMembers", fields: [userId], references: [id])
-  assignedAt DateTime @default(now())
-  assignedBy String? // Optional: UID or username of who assigned
+  teamId BigInt @map("team_id")
+  userId BigInt @map("user_id")
+  user   User   @relation("TeamMembers", fields: [userId], references: [id], onUpdate: Restrict, map: "FKee8x7x5026imwmma9kndkxs36")
+  team   Team   @relation("TeamToMember", fields: [teamId], references: [id], onUpdate: Restrict, map: "FKtgca08el3ofisywcf11f0f76t")
 
   @@id([teamId, userId])
+  @@index([userId], map: "FKee8x7x5026imwmma9kndkxs36")
   @@map("team_members")
 }
 
-
 model Hangar {
-  id        BigInt   @id @default(autoincrement())
-  name      String   @db.VarChar(100)
-  location  String   @db.VarChar(200)
-  capacity  Float
-  status    String // Consider ENUM('ACTIVE', 'INACTIVE') if your DB supports it and Prisma is configured for it
-  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
-  batches   Batch[]
+  id            BigInt         @id @default(autoincrement())
+  capacity      Float
+  location      String         @db.VarChar(200)
+  name          String         @db.VarChar(100)
+  status        String         @db.VarChar(255)
+  batches       Batch[]
   interventions Intervention[]
-  kpis      Kpi[]
-  alerts    Alert[] // Added missing opposite relation for Alert.hangar
+  kpis          Kpi[]
 
   @@map("hangars")
 }
 
 model Batch {
-  id            BigInt        @id @default(autoincrement())
-  fertilizerType String       @map("fertilizer_type")
-  quantity      Float        // Added from TypeScript types
-  unit          String       @default("tonnes") @db.VarChar(50) // Added from TypeScript types
-  stockedDate   DateTime      @map("stocked_date") @db.Date
+  id                    BigInt    @id @default(autoincrement())
   expectedTransportDate DateTime? @map("expected_transport_date") @db.Date
-  maxStorageDays Int          @map("max_storage_days")
-  hangarId      BigInt        @map("hangar_id")
-  teamId        BigInt?       @map("team_id")
-  status        BatchStatus   @default(STOCKED) // Added from TypeScript types
-  createdAt     DateTime      @default(now()) @map("created_at") @db.DateTime(6)
+  fertilizerType        String    @map("fertilizer_type") @db.VarChar(255)
+  maxStorageDays        Int       @map("max_storage_days")
+  stockedDate           DateTime  @map("stocked_date") @db.Date
+  hangarId              BigInt    @map("hangar_id")
+  teamId                BigInt?   @map("team_id")
+  alerts                Alert[]
+  hangar                Hangar    @relation(fields: [hangarId], references: [id], onUpdate: Restrict, map: "FK7rcvltqy845815jrjv3eo1h00")
+  team                  Team?     @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK99i1ukgv5bhltj2aoua2f5wox")
 
-  hangar        Hangar        @relation(fields: [hangarId], references: [id])
-  team          Team?         @relation(fields: [teamId], references: [id])
-  alerts        Alert[]
-  interventions Intervention[]
-
+  @@index([hangarId], map: "FK7rcvltqy845815jrjv3eo1h00")
+  @@index([teamId], map: "FK99i1ukgv5bhltj2aoua2f5wox")
   @@map("batches")
 }
 
 model Alert {
-  id            BigInt    @id @default(autoincrement())
-  title         String
-  message       String    @db.VarChar(1000) // Increased length
-  type          AlertType
-  severity      AlertSeverity
-  status        AlertStatus
-  batchId       BigInt?   @map("batch_id") // Made optional to match SQL, check if this is intended. Your SQL Alert.batch_id is NOT NULL
-  hangarId      BigInt?   @map("hangar_id") // Added hangarId
-  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(6)
-  detectedAt    DateTime  @map("detected_at") @db.DateTime(6)
-  estimatedCriticalTime DateTime? @map("estimated_critical_time") @db.DateTime(6) // SQL has NOT NULL, TS had optional
-  acknowledgedAt DateTime? @map("acknowledged_at") @db.DateTime(6)
-  resolvedAt    DateTime? @map("resolved_at") @db.DateTime(6)
+  id                    BigInt          @id @default(autoincrement())
+  createdAt             DateTime        @map("created_at") @db.DateTime(6)
+  message               String          @db.VarChar(255)
+  type                  String          @db.VarChar(255)
+  batchId               BigInt          @map("batch_id")
+  acknowledgedAt        DateTime?       @map("acknowledged_at") @db.DateTime(6)
+  detectedAt            DateTime        @map("detected_at") @db.DateTime(6)
+  estimatedCriticalTime DateTime        @map("estimated_critical_time") @db.DateTime(6)
+  resolvedAt            DateTime?       @map("resolved_at") @db.DateTime(6)
+  severity              alerts_severity
+  status                alerts_status
+  title                 String          @db.VarChar(255)
+  AlertTeam             AlertTeam[]
+  batch                 Batch           @relation(fields: [batchId], references: [id], onUpdate: Restrict, map: "FK82jxh3up3hyupb0l1gfj15f1d")
 
-  batch         Batch?    @relation(fields: [batchId], references: [id])
-  hangar        Hangar?   @relation(fields: [hangarId], references: [id]) // Relation to Hangar
-  AlertTeam     AlertTeam[]
-
+  @@index([batchId], map: "FK82jxh3up3hyupb0l1gfj15f1d")
   @@map("alerts")
 }
 
-// Explicit many-to-many relation table for Alert and Team
 model AlertTeam {
   alertId BigInt @map("alert_id")
   teamId  BigInt @map("team_id")
-  alert   Alert  @relation(fields: [alertId], references: [id])
-  team    Team   @relation(fields: [teamId], references: [id])
+  alert   Alert  @relation(fields: [alertId], references: [id], onUpdate: Restrict, map: "FK5i3j0j2jwbs1mh23qy2mqvtv")
+  team    Team   @relation(fields: [teamId], references: [id], onUpdate: Restrict, map: "FKn3cqjilwhador0gs9gmsf7xcu")
 
   @@id([alertId, teamId])
+  @@index([teamId], map: "FKn3cqjilwhador0gs9gmsf7xcu")
   @@map("alert_teams")
 }
 
-
 model Intervention {
-  id            BigInt      @id @default(autoincrement())
-  title         String      // Added from TypeScript types
-  description   String      @db.VarChar(1000)
-  scheduledTime DateTime    @map("scheduled_time") @db.DateTime(6)
-  expectedResolutionTime DateTime? @map("expected_resolution_time") @db.DateTime(6) // SQL has NOT NULL
-  actualResolutionTime DateTime? @map("actual_resolution_time") @db.DateTime(6)
-  hangarId      BigInt      @map("hangar_id")
-  batchId       BigInt?     @map("batch_id") // Added from TypeScript types
-  teamId        BigInt      @map("team_id")
-  status        InterventionStatus @default(PLANNED) // Added from TypeScript types
-  notes         String?     @db.Text // Added from TypeScript types
-  createdAt     DateTime    @default(now()) @map("created_at") @db.DateTime(6)
+  id                     BigInt   @id @default(autoincrement())
+  description            String   @db.VarChar(1000)
+  expectedResolutionTime DateTime @map("expected_resolution_time") @db.DateTime(6)
+  scheduledTime          DateTime @map("scheduled_time") @db.DateTime(6)
+  hangarId               BigInt   @map("hangar_id")
+  teamId                 BigInt   @map("team_id")
+  hangar                 Hangar   @relation(fields: [hangarId], references: [id], onUpdate: Restrict, map: "FK27uleyvuruvslbmvfpa4wkf1d")
+  team                   Team     @relation(fields: [teamId], references: [id], onUpdate: Restrict, map: "FKn37mpw1hxvrh5gk91vhopm4r8")
 
-  hangar        Hangar      @relation(fields: [hangarId], references: [id])
-  batch         Batch?      @relation(fields: [batchId], references: [id])
-  team          Team        @relation(fields: [teamId], references: [id])
-
+  @@index([hangarId], map: "FK27uleyvuruvslbmvfpa4wkf1d")
+  @@index([teamId], map: "FKn37mpw1hxvrh5gk91vhopm4r8")
   @@map("interventions")
 }
 
 model Kpi {
-  id            BigInt    @id @default(autoincrement()) @map("id")
-  hangarId      BigInt?   @map("hangar_id")
-  totalBatches  Int       @map("total_batches")
-  riskyBatches  Int       @map("risky_batches")
-  interventionsCompleted Int? @map("interventions_completed")
-  averageStorageTime Float @map("average_storage_time")
-  capacityUtilization Float? @map("capacity_utilization")
-  alertsResolvedRatio Float? @map("alerts_resolved_ratio")
-  calculatedAt  DateTime  @default(now()) @map("calculated_at") @db.DateTime(6)
-  period        KpiPeriod @default(daily)
+  id                 BigInt  @id @map("id")
+  averageStorageTime Float   @map("average_storage_time")
+  riskyBatches       Int     @map("risky_batches")
+  totalBatches       Int     @map("total_batches")
+  hangarId           BigInt? @map("hangar_id")
+  hangar             Hangar? @relation(fields: [hangarId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK93m5btbybwjl0nruhd6uxjp5f")
 
-  hangar        Hangar?   @relation(fields: [hangarId], references: [id])
-
+  @@index([hangarId], map: "FK93m5btbybwjl0nruhd6uxjp5f")
   @@map("kpi")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model kpi_seq {
+  next_val BigInt?
+
+  @@ignore
+}
+
+model test {
+  id Int @id @default(autoincrement())
 }
 
 enum UserRole {
@@ -176,42 +157,14 @@ enum UserRole {
   USER
 }
 
-enum BatchStatus {
-  STOCKED
-  PROCESSING
-  TRANSPORTED
-  SPOILED
-}
-
-enum AlertType {
-  STORAGE_EXPIRY
-  INTERVENTION_NEEDED
-  LOW_STOCK
-  EQUIPMENT_FAILURE
-}
-
-enum AlertSeverity {
+enum alerts_severity {
   CRITICAL
   EMERGENCY
   WARNING
-  INFO // Added INFO from TS types, SQL only had CRITICAL, EMERGENCY, WARNING
 }
 
-enum AlertStatus {
-  ACTIVE
+enum alerts_status {
   ACKNOWLEDGED
+  ACTIVE
   RESOLVED
-}
-
-enum InterventionStatus {
-  PLANNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum KpiPeriod {
-  daily
-  weekly
-  monthly
 }
