@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, AlertTriangle, Download, FileDown } from "lucide-react";
+import { BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, AlertTriangle, Download, FileDown, Warehouse, Users } from "lucide-react";
 import { BarChart } from "@/components/charts/BarChart";
 import { PieChart } from "@/components/charts/PieChart";
 import { LineChart } from "@/components/charts/LineChart";
@@ -51,7 +51,6 @@ export function KpiClient() {
   const [error, setError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const kpiContainerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchKpiData = async () => {
@@ -119,6 +118,64 @@ export function KpiClient() {
   const completedInterventions = kpiData.interventionStatusData.find(item => item.name === "Terminées")?.value || 0;
   const completedPercentage = totalInterventions > 0 ? Math.round((completedInterventions / totalInterventions) * 100) : 0;
 
+  // Fonction pour générer un rapport PDF complet
+  const generateFullReport = async () => {
+    try {
+      setGeneratingPdf(true);
+      if (!kpiContainerRef.current) {
+        alert("Impossible de générer le rapport : élément non trouvé");
+        setGeneratingPdf(false);
+        return;
+      }
+
+      await generatePDF(
+        "kpi-container", 
+        "rapport-kpi", 
+        "Rapport des Indicateurs de Performance Clés",
+        "landscape"
+      );
+      
+      alert("Rapport PDF généré avec succès !");
+      setGeneratingPdf(false);
+    } catch (err) {
+      console.error("Erreur lors de la génération du rapport :", err);
+      alert("Erreur lors de la génération du rapport");
+      setGeneratingPdf(false);
+    }
+  };
+
+  // Fonction pour télécharger les données au format CSV
+  const downloadCsvData = () => {
+    try {
+      // Préparer les données pour chaque type de graphique
+      const storageTimeCSV = kpiData.storageTimeData.map(item => ({ 
+        type: "Temps de Stockage", 
+        ...item 
+      }));
+      
+      const riskyBatchesCSV = kpiData.riskyBatchesData.map(item => ({ 
+        type: "Lots à Risque", 
+        ...item 
+      }));
+      
+      const interventionStatusCSV = kpiData.interventionStatusData.map(item => ({ 
+        type: "Statut des Interventions", 
+        ...item 
+      }));
+      
+      // Combiner toutes les données
+      const allData = [...storageTimeCSV, ...riskyBatchesCSV, ...interventionStatusCSV];
+      
+      // Générer le CSV
+      generateCSV(allData, "donnees-kpi");
+      
+      alert("Données CSV téléchargées avec succès !");
+    } catch (err) {
+      console.error("Erreur lors du téléchargement des données CSV :", err);
+      alert("Erreur lors du téléchargement des données CSV");
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-96">Chargement des données KPI...</div>;
   }
@@ -128,16 +185,56 @@ export function KpiClient() {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Temps de Stockage Moyen</CardTitle>
-          <BarChart3 className="h-5 w-5 text-primary" />
+    <>
+      <div className="mb-6 flex justify-end space-x-4">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center space-x-2"
+          onClick={downloadCsvData}
+          disabled={loading || generatingPdf}
+        >
+          <FileDown className="h-4 w-4" />
+          <span>Télécharger données CSV</span>
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="flex items-center space-x-2"
+          onClick={generateFullReport}
+          disabled={loading || generatingPdf}
+        >
+          {generatingPdf ? (
+            <>
+              <span className="animate-spin mr-2">&#9696;</span>
+              <span>Génération en cours...</span>
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              <span>Télécharger rapport PDF</span>
+            </>
+          )}
+        </Button>
+      </div>
+
+      <div id="kpi-container" ref={kpiContainerRef} className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+      <Card className="overflow-hidden border-t-4 border-primary hover:shadow-lg transition-all duration-300">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <div className="p-1.5 rounded-full bg-primary/20">
+              <BarChart3 className="h-4 w-4 text-primary" />
+            </div>
+            Temps de Stockage Moyen
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{avgStorageTime} jours</div>
-          <p className="text-xs text-muted-foreground">+2% par rapport au mois dernier</p>
-          <div className="h-[200px] mt-4">
+          <div className="flex items-baseline gap-1 mt-2">
+            <div className="text-3xl font-bold tracking-tight">{avgStorageTime}</div>
+            <div className="text-lg font-medium text-muted-foreground">jours</div>
+          </div>
+          <p className="text-xs text-green-600 font-medium flex items-center gap-1 mt-1">+2% <span className="text-muted-foreground font-normal">par rapport au mois dernier</span></p>
+          <div className="h-[200px] mt-6">
             <BarChart 
               data={kpiData.storageTimeData} 
               color="#4f46e5"
@@ -146,15 +243,22 @@ export function KpiClient() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Lots à Risque</CardTitle>
-          <AlertTriangle className="h-5 w-5 text-destructive" />
+      <Card className="overflow-hidden border-t-4 border-destructive hover:shadow-lg transition-all duration-300">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-destructive/5 to-destructive/10">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <div className="p-1.5 rounded-full bg-destructive/20">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            Lots à Risque
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{riskyPercentage}%</div>
-          <p className="text-xs text-muted-foreground">-5% par rapport au mois dernier</p>
-          <div className="h-[200px] mt-4">
+          <div className="flex items-baseline gap-1 mt-2">
+            <div className="text-3xl font-bold tracking-tight">{riskyPercentage}</div>
+            <div className="text-lg font-medium text-muted-foreground">%</div>
+          </div>
+          <p className="text-xs text-green-600 font-medium flex items-center gap-1 mt-1">-5% <span className="text-muted-foreground font-normal">par rapport au mois dernier</span></p>
+          <div className="h-[200px] mt-6">
             <PieChart 
               data={kpiData.riskyBatchesData} 
               colors={['#10b981', '#f97316', '#ef4444']} 
@@ -163,14 +267,27 @@ export function KpiClient() {
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Statut des Interventions</CardTitle>
-          <LineChartIcon className="h-5 w-5 text-accent" />
+      <Card className="overflow-hidden border-t-4 border-accent hover:shadow-lg transition-all duration-300">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-accent/5 to-accent/10">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <div className="p-1.5 rounded-full bg-accent/20">
+              <LineChartIcon className="h-4 w-4 text-accent" />
+            </div>
+            Statut des Interventions
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{totalInterventions} Interventions ce mois</div>
-          <p className="text-xs text-muted-foreground">{completedPercentage}% terminées</p>
+          <div className="flex flex-col mt-2">
+            <div className="text-3xl font-bold tracking-tight">{totalInterventions}</div>
+            <div className="text-sm font-medium text-muted-foreground">Interventions ce mois</div>
+          </div>
+          <div className="w-full bg-muted/50 h-2 rounded-full mt-2 overflow-hidden">
+            <div 
+              className="h-full bg-accent rounded-full" 
+              style={{ width: `${completedPercentage}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{completedPercentage}% terminées</p>
           <div className="h-[200px] mt-4">
             <BarChart 
               data={kpiData.interventionStatusData} 
@@ -180,12 +297,17 @@ export function KpiClient() {
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Utilisation de la Capacité des Hangars</CardTitle>
+      <Card className="lg:col-span-2 overflow-hidden border-t-4 border-primary/70 hover:shadow-lg transition-all duration-300">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <div className="p-1.5 rounded-full bg-primary/20">
+              <Warehouse className="h-4 w-4 text-primary" />
+            </div>
+            Utilisation de la Capacité des Hangars
+          </CardTitle>
           <CardDescription>Pourcentage de capacité utilisée par hangar.</CardDescription>
         </CardHeader>
-        <CardContent className="h-[300px]">
+        <CardContent className="h-[300px] pt-6">
           <ComposedChart 
             data={kpiData.capacityData} 
             elements={[
@@ -197,12 +319,17 @@ export function KpiClient() {
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2 xl:col-span-1">
-        <CardHeader>
-          <CardTitle>Performance des Équipes</CardTitle>
+      <Card className="lg:col-span-2 xl:col-span-1 overflow-hidden border-t-4 border-green-500/70 hover:shadow-lg transition-all duration-300">
+        <CardHeader className="bg-gradient-to-r from-green-500/5 to-transparent border-b">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <div className="p-1.5 rounded-full bg-green-500/20">
+              <Users className="h-4 w-4 text-green-600" />
+            </div>
+            Performance des Équipes
+          </CardTitle>
           <CardDescription>Nombre d'interventions par équipe et temps de résolution moyen (heures).</CardDescription>
         </CardHeader>
-        <CardContent className="h-[300px]">
+        <CardContent className="h-[300px] pt-6">
           <ComposedChart 
             data={kpiData.teamPerformanceData} 
             elements={[
@@ -213,5 +340,6 @@ export function KpiClient() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
