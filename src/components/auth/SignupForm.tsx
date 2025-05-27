@@ -47,27 +47,95 @@ export function SignupForm() {
     },
   });
 
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  // Vérification de disponibilité d'email
+  const checkEmailAvailability = async (email: string) => {
+    try {
+      const response = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setEmailError(data.error || "Erreur lors de la vérification de l'email");
+        return false;
+      }
+      
+      if (data.exists) {
+        setEmailError("Cet email est déjà utilisé");
+        return false;
+      }
+      
+      setEmailError(null);
+      return true;
+    } catch (error) {
+      console.error("Error checking email availability:", error);
+      return true; // En cas d'erreur, on laisse continuer l'inscription
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
+    setEmailError(null);
+    setUsernameError(null);
+    
+    // Vérifier la disponibilité de l'email avant l'inscription
+    const emailAvailable = await checkEmailAvailability(values.email);
+    if (!emailAvailable) {
+      setLoading(false);
+      form.setError("email", { 
+        type: "manual", 
+        message: "Cet email est déjà utilisé" 
+      });
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { confirmPassword, ...signupData } = values; 
     
-    const success = await signup(signupData);
+    try {
+      const success = await signup(signupData);
 
-    if (success) {
-      toast({
-        title: "Inscription réussie",
-        description: "Votre compte a été créé et vous êtes connecté.",
-      });
-      // AuthProvider handles redirection
-    } else {
-      toast({
-        title: "Erreur d'inscription",
-        description: "Impossible de créer le compte. L'email ou le nom d'utilisateur est peut-être déjà utilisé.",
-        variant: "destructive",
-      });
+      if (success) {
+        toast({
+          title: "Inscription réussie",
+          description: "Votre compte a été créé et vous êtes connecté.",
+        });
+        // AuthProvider handles redirection
+      } else {
+        // Gérer le cas où l'inscription échoue
+        toast({
+          title: "Erreur d'inscription",
+          description: "Impossible de créer le compte. Veuillez vérifier vos informations.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      
+      // Vérifier le type d'erreur
+      if (error.message && error.message.includes("Email already exists")) {
+        setEmailError("Cet email est déjà utilisé");
+        form.setError("email", { 
+          type: "manual", 
+          message: "Cet email est déjà utilisé" 
+        });
+      } else if (error.message && error.message.includes("Username already exists")) {
+        setUsernameError("Ce nom d'utilisateur est déjà utilisé");
+        form.setError("username", { 
+          type: "manual", 
+          message: "Ce nom d'utilisateur est déjà utilisé" 
+        });
+      } else {
+        toast({
+          title: "Erreur d'inscription",
+          description: "Une erreur s'est produite lors de l'inscription. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (

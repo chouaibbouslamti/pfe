@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Gestion Hangar Intelligent',
+  title: 'Gestion hangar et intervention au cacking (GHIC)',
   description: 'Application de gestion de hangars et interventions d\'engrais.',
 };
 

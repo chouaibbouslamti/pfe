@@ -8,21 +8,22 @@ datasource db {
 }
 
 model User {
-  id          BigInt       @id @default(autoincrement())
-  createdAt   DateTime?    @map("created_at") @db.DateTime(6)
-  email       String       @unique(map: "UK_6dotkott2kjsp8vw4d0m25fb7") @db.VarChar(255)
-  firstName   String?      @map("first_name") @db.VarChar(255)
-  isActive    Boolean?     @map("is_active") @db.Bit(1)
-  lastLogin   DateTime?    @map("last_login") @db.DateTime(6)
-  lastName    String?      @map("last_name") @db.VarChar(255)
-  password    String       @db.VarChar(255)
-  phoneNumber String?      @map("phone_number") @db.VarChar(255)
-  role        UserRole
-  username    String       @unique(map: "UK_r43af9ap4edm43mmtq01oddj6") @db.VarChar(50)
-  teamId      BigInt?      @map("team_id")
-  isApproved  Boolean      @map("is_approved") @db.Bit(1)
-  TeamMember  TeamMember[] @relation("TeamMembers")
-  team        Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FKfjws1rdruab2bqg7qipoqf65r")
+  id           BigInt       @id @default(autoincrement())
+  createdAt    DateTime?    @map("created_at") @db.DateTime(6)
+  email        String       @unique(map: "UK_6dotkott2kjsp8vw4d0m25fb7") @db.VarChar(255)
+  firstName    String?      @map("first_name") @db.VarChar(255)
+  isActive     Boolean?     @map("is_active") @db.Bit(1)
+  lastLogin    DateTime?    @map("last_login") @db.DateTime(6)
+  lastName     String?      @map("last_name") @db.VarChar(255)
+  password     String       @db.VarChar(255)
+  phoneNumber  String?      @map("phone_number") @db.VarChar(255)
+  role         UserRole
+  username     String       @unique(map: "UK_r43af9ap4edm43mmtq01oddj6") @db.VarChar(50)
+  teamId       BigInt?      @map("team_id")
+  isApproved   Boolean      @map("is_approved") @db.Bit(1)
+  TeamMember   TeamMember[] @relation("TeamMembers")
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FKfjws1rdruab2bqg7qipoqf65r")
+  managedTeam  Team?        @relation("TeamManager")
 
   @@index([teamId], map: "FKfjws1rdruab2bqg7qipoqf65r")
   @@map("users")
@@ -32,11 +33,13 @@ model Team {
   id            BigInt         @id @default(autoincrement())
   contact       String?        @db.VarChar(255)
   name          String         @db.VarChar(100)
+  managerId     BigInt?        @unique @map("manager_id")
   AlertTeam     AlertTeam[]
   batches       Batch[]
   interventions Intervention[]
   TeamMember    TeamMember[]   @relation("TeamToMember")
   users         User[]
+  manager       User?          @relation("TeamManager", fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@map("teams")
 }

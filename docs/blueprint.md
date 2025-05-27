@@ -1,4 +1,4 @@
-# **App Name**: Gestion Hangar Intelligent
+# **App Name**: Gestion Hangar et intervention au cacking
 
 ## Core Features:
 

@@ -2,7 +2,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Inscription - Gestion Hangar Intelligent",
+  title: "Inscription - Gestion hangar et intervention au cacking (GHIC)",
   description: "Créez un nouveau compte.",
 };
 

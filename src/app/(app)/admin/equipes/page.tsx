@@ -19,7 +19,8 @@ import * as z from "zod";
 import { Building2, PlusCircle, Edit, Users, Trash2, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockTeams, mockUserProfiles, generateId } from "@/lib/mockData";
+// Import axios pour les appels API
+import axios from "axios";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Le nom de l'équipe est requis (min 3 caractères)."),
@@ -30,8 +31,8 @@ const teamSchema = z.object({
 export default function TeamsAdminPage() {
   const { userProfile, loading: authLoading, localUserProfiles, setLocalUserProfiles: setLocalUsers } = useAuth();
   const router = useRouter();
-  const [teams, setTeams] = useState<Team[]>(mockTeams);
-  const [users, setUsers] = useState<UserProfile[]>(localUserProfiles || []); 
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]); 
   const [loadingData, setLoadingData] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -52,12 +53,34 @@ export default function TeamsAdminPage() {
     }
   }, [userProfile, authLoading, router]);
 
+  // Charger les équipes depuis l'API
   useEffect(() => {
     if (userProfile?.role === "SUPER_ADMIN") {
-      setUsers(localUserProfiles); // Update users when localUserProfiles change
-      setLoadingData(false);
+      const fetchData = async () => {
+        try {
+          // Charger les équipes
+          const teamsResponse = await axios.get('/api/teams');
+          setTeams(teamsResponse.data);
+          
+          // Charger les utilisateurs
+          const usersResponse = await axios.get('/api/users');
+          setUsers(usersResponse.data);
+          
+          setLoadingData(false);
+        } catch (error) {
+          console.error('Erreur lors du chargement des données:', error);
+          toast({ 
+            title: "Erreur", 
+            description: "Impossible de charger les données. Veuillez réessayer.", 
+            variant: "destructive" 
+          });
+          setLoadingData(false);
+        }
+      };
+      
+      fetchData();
     }
-  }, [userProfile, localUserProfiles]);
+  }, [userProfile, toast]);
   
   const getUserName = (uid: string | number) => {
     if (!users || !Array.isArray(users)) return String(uid);
@@ -70,41 +93,47 @@ export default function TeamsAdminPage() {
   const onSubmit = async (values: z.infer<typeof teamSchema>) => {
     try {
       if (editingTeam) { // Update existing team
-        setTeams(prevTeams => prevTeams.map(t => t.id === editingTeam.id ? { 
-          ...editingTeam, 
+        // Appel API pour mettre à jour l'équipe
+        const response = await axios.put(`/api/teams/${editingTeam.id}`, {
           name: values.name,
-          contact: values.contact || undefined,
-          managerId: Number(values.managerId)
-        } : t));
-        toast({ title: "Succès (simulation)", description: "Équipe mise à jour." });
+          contact: values.contact || null,
+          managerId: values.managerId
+        });
+        
+        // Mettre à jour l'état local avec les données de la réponse
+        const updatedTeam = response.data;
+        setTeams(prevTeams => prevTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t));
+        
+        toast({ title: "Succès", description: "Équipe mise à jour." });
         setEditingTeam(null);
         setIsEditDialogOpen(false);
       } else { // Create new team
-        const newTeam: Team = {
-          id: generateId(),
+        // Appel API pour créer une nouvelle équipe
+        const response = await axios.post('/api/teams', {
           name: values.name,
-          contact: values.contact || undefined,
-          managerId: Number(values.managerId),
-          members: [],
-          memberIds: [Number(values.managerId)],
-          createdAt: new Date(),
-        };
+          contact: values.contact || null,
+          managerId: values.managerId
+        });
+        
+        // Ajouter la nouvelle équipe à l'état local
+        const newTeam = response.data;
         setTeams(prevTeams => [...prevTeams, newTeam]);
         
-        // Update manager's teamId and role in localUsers
-        const managerProfile = users.find(u => u.uid === values.managerId);
-        if (managerProfile) {
-          setLocalUsers(prevLocalUsers => prevLocalUsers.map(u => 
-            u.uid === values.managerId ? { ...u, teamId: newTeam.id, role: u.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "TEAM_MANAGER" } : u
-          ));
-        }
-        toast({ title: "Succès (simulation)", description: "Nouvelle équipe créée." });
+        // Recharger les utilisateurs pour refléter les changements
+        const usersResponse = await axios.get('/api/users');
+        setUsers(usersResponse.data);
+        
+        toast({ title: "Succès", description: "Nouvelle équipe créée." });
         setIsCreateDialogOpen(false);
       }
       form.reset();
     } catch (error) {
       console.error("Error saving team:", error);
-      toast({ title: "Erreur (simulation)", description: "Impossible de sauvegarder l'équipe.", variant: "destructive" });
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de sauvegarder l'équipe. Veuillez réessayer.", 
+        variant: "destructive" 
+      });
     }
   };
   
@@ -129,28 +158,29 @@ export default function TeamsAdminPage() {
   const saveTeamMembers = async () => {
     if (!teamToManageMembers) return;
     try {
-      const oldMembers = teamToManageMembers.members || [];
+      // Appel API pour mettre à jour les membres de l'équipe
+      const response = await axios.put(`/api/teams/${teamToManageMembers.id}/members`, {
+        members: selectedMembers
+      });
       
-      setTeams(prevTeams => prevTeams.map(t => 
-        t.id === teamToManageMembers.id ? { ...t, members: selectedMembers } : t
-      ));
+      // Mettre à jour l'état local avec les données de la réponse
+      const updatedTeam = response.data;
+      setTeams(prevTeams => prevTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t));
+      
+      // Recharger les utilisateurs pour refléter les changements
+      const usersResponse = await axios.get('/api/users');
+      setUsers(usersResponse.data);
 
-      // Update teamId for users locally
-      const addedMembers = selectedMembers.filter(id => !oldMembers.includes(id));
-      const removedMembers = oldMembers.filter(id => !selectedMembers.includes(id) && id !== teamToManageMembers.managerId);
-
-      setLocalUsers(prevLocalUsers => prevLocalUsers.map(u => {
-        if (addedMembers.includes(u.uid)) return { ...u, teamId: teamToManageMembers.id };
-        if (removedMembers.includes(u.uid)) return { ...u, teamId: undefined }; // Or an empty string
-        return u;
-      }));
-
-      toast({ title: "Succès (simulation)", description: "Membres de l'équipe mis à jour." });
+      toast({ title: "Succès", description: "Membres de l'équipe mis à jour." });
       setIsManageMembersDialogOpen(false);
       setTeamToManageMembers(null);
     } catch (error) {
       console.error("Error updating team members:", error);
-      toast({ title: "Erreur (simulation)", description: "Impossible de mettre à jour les membres.", variant: "destructive" });
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour les membres de l'équipe. Veuillez réessayer.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -164,7 +194,7 @@ export default function TeamsAdminPage() {
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestion des Équipes</h1>
-          <p className="text-muted-foreground">Créez et gérez les équipes d'intervention (simulation locale).</p>
+          <p className="text-muted-foreground">Créez et gérez les équipes d'intervention.</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -186,25 +216,40 @@ export default function TeamsAdminPage() {
               <div>
                 <Label htmlFor="managerId">Chef d'équipe</Label>
                 <Controller
+                    key="managerId-create"
                     name="managerId"
                     control={form.control}
-                    render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger id="managerId">
-                            <SelectValue placeholder="Sélectionner un chef d'équipe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                            <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => ( 
-                                <SelectItem key={user.uid} value={user.uid}>
-                                {user.firstName} {user.lastName} ({user.email})
-                                </SelectItem>
-                            ))}
-                            </SelectGroup>
-                        </SelectContent>
-                        </Select>
-                    )}
+                    render={({ field }) => {
+                        // Assurez-vous que la valeur est une chaîne de caractères
+                        const value = field.value ? String(field.value) : "";
+                        return (
+                            <Select 
+                                onValueChange={(newValue) => {
+                                    console.log('Sélection du chef:', newValue);
+                                    field.onChange(newValue);
+                                }} 
+                                value={value}
+                                disabled={loadingData}
+                            >
+                                <SelectTrigger id="managerId" className="w-full">
+                                    <SelectValue placeholder="Sélectionner un chef d'équipe" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                    <SelectLabel>Utilisateurs disponibles</SelectLabel>
+                                    {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => { 
+                                        const userId = user.uid || String(user.id);
+                                        return (
+                                            <SelectItem key={userId} value={userId}>
+                                                <span>{user.firstName} {user.lastName} ({user.email})</span>
+                                            </SelectItem>
+                                        );
+                                    })}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        );
+                    }}
                 />
                 {form.formState.errors.managerId && <p className="text-sm text-destructive mt-1">{form.formState.errors.managerId.message}</p>}
               </div>
@@ -237,26 +282,41 @@ export default function TeamsAdminPage() {
               <div>
                 <Label htmlFor="edit-managerId">Chef d'équipe</Label>
                  <Controller
-                    name="managerId"
-                    control={form.control}
-                    render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger id="edit-managerId">
-                            <SelectValue placeholder="Sélectionner un chef d'équipe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                            <SelectLabel>Utilisateurs disponibles</SelectLabel>
-                            {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => (
-                                <SelectItem key={user.uid} value={user.uid}>
-                                {user.firstName} {user.lastName} ({user.email})
-                                </SelectItem>
-                            ))}
-                            </SelectGroup>
-                        </SelectContent>
-                        </Select>
-                    )}
-                />
+                  key="managerId-edit"
+                  name="managerId"
+                  control={form.control}
+                  render={({ field }) => {
+                      // Assurez-vous que la valeur est une chaîne de caractères
+                      const value = field.value ? String(field.value) : "";
+                      return (
+                          <Select 
+                              onValueChange={(newValue) => {
+                                  console.log('Sélection du chef (edit):', newValue);
+                                  field.onChange(newValue);
+                              }}
+                              value={value}
+                              disabled={loadingData}
+                          >
+                              <SelectTrigger id="edit-managerId" className="w-full">
+                                  <SelectValue placeholder="Sélectionner un chef d'équipe" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectGroup>
+                                  <SelectLabel>Utilisateurs disponibles</SelectLabel>
+                                  {users?.filter(u => u && u.role !== 'USER' && u.isActive).map(user => {
+                                      const userId = user.uid || String(user.id);
+                                      return (
+                                          <SelectItem key={userId} value={userId}>
+                                              <span>{user.firstName} {user.lastName} ({user.email})</span>
+                                          </SelectItem>
+                                      );
+                                  })}
+                                  </SelectGroup>
+                              </SelectContent>
+                          </Select>
+                      );
+                  }}
+              />
                 {form.formState.errors.managerId && <p className="text-sm text-destructive mt-1">{form.formState.errors.managerId.message}</p>}
               </div>
               <div>
@@ -272,34 +332,37 @@ export default function TeamsAdminPage() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isManageMembersDialogOpen} onOpenChange={setIsManageMembersDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Gérer les Membres de l'Équipe: {teamToManageMembers?.name}</DialogTitle>
-              <DialogDescription>Sélectionnez les utilisateurs à ajouter ou retirer de cette équipe.</DialogDescription>
-            </DialogHeader>
-            <div className="py-4 max-h-96 overflow-y-auto space-y-2">
-              {users?.filter(u => u && u.uid !== teamToManageMembers?.managerId && u.isActive).map(user => ( 
-                <div key={user.uid} className="flex items-center space-x-2 p-2 border rounded-md">
+      <Dialog open={isManageMembersDialogOpen} onOpenChange={setIsManageMembersDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gérer les Membres de l'Équipe: {teamToManageMembers?.name}</DialogTitle>
+            <DialogDescription>Sélectionnez les utilisateurs à ajouter ou retirer de cette équipe.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 max-h-96 overflow-y-auto space-y-2">
+            {users?.filter(u => u && u.uid !== teamToManageMembers?.managerId && u.isActive).map(user => { 
+              const memberId = user.uid || user.id;
+              return (
+                <div key={`member-item-${memberId}`} className="flex items-center space-x-2 p-2 border rounded-md">
                   <Checkbox
-                    id={`member-${user.uid}`}
-                    checked={selectedMembers.includes(user.uid)}
-                    onCheckedChange={() => handleMemberSelection(user.uid)}
-                    disabled={user.uid === teamToManageMembers?.managerId} 
+                    key={`checkbox-${memberId}`}
+                    id={`member-${memberId}`}
+                    checked={selectedMembers.includes(memberId)}
+                    onCheckedChange={() => handleMemberSelection(memberId)}
+                    disabled={memberId === teamToManageMembers?.managerId} 
                   />
-                  <label htmlFor={`member-${user.uid}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  <label htmlFor={`member-${memberId}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     {user.firstName} {user.lastName} ({user.email})
                   </label>
                 </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsManageMembersDialogOpen(false)}>Annuler</Button>
-              <Button onClick={saveTeamMembers}>Sauvegarder Membres</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsManageMembersDialogOpen(false)}>Annuler</Button>
+            <Button onClick={saveTeamMembers}>Sauvegarder Membres</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader><CardTitle>Liste des Équipes</CardTitle></CardHeader>

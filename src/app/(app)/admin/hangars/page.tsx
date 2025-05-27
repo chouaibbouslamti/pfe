@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Warehouse, PlusCircle, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import { Warehouse, PlusCircle, Edit, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { mockHangars, generateId } from "@/lib/mockData";
 
@@ -77,27 +77,61 @@ export default function HangarsAdminPage() {
   }, [userProfile, authLoading, router]);
 
   const onSubmit = async (values: z.infer<typeof hangarSchema>) => {
+    setLoadingData(true);
     try {
       if (editingHangar) {
-        setHangars(prevHangars => 
-          prevHangars.map(h => h.id === editingHangar.id ? { ...editingHangar, ...values } : h)
-        );
-        toast({ title: "Succès (simulation)", description: "Hangar mis à jour." });
+        // Mise à jour d'un hangar existant
+        const response = await fetch(`/api/hangars/${editingHangar.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+        
+        if (response.ok) {
+          const updatedHangar = await response.json();
+          // Mettre à jour l'état local avec les données de la base de données
+          setHangars(prevHangars => 
+            prevHangars.map(h => h.id === editingHangar.id ? updatedHangar : h)
+          );
+          toast({ title: "Succès", description: "Hangar mis à jour avec succès." });
+        } else {
+          throw new Error('Échec de la mise à jour du hangar');
+        }
       } else {
-        const newHangar: Hangar = { 
-          id: generateId(), 
-          ...values, 
-          createdAt: new Date() 
-        };
-        setHangars(prevHangars => [...prevHangars, newHangar]);
-        toast({ title: "Succès (simulation)", description: "Nouveau hangar créé." });
+        // Création d'un nouveau hangar
+        const response = await fetch('/api/hangars', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+        
+        if (response.ok) {
+          const newHangar = await response.json();
+          // Ajouter le nouveau hangar à l'état local
+          setHangars(prevHangars => [...prevHangars, newHangar]);
+          toast({ title: "Succès", description: "Nouveau hangar créé avec succès." });
+        } else {
+          throw new Error('Échec de la création du hangar');
+        }
       }
+      
+      // Réinitialiser le formulaire
       form.reset({ name: "", location: "", capacity: 0, status: "ACTIVE" });
       setEditingHangar(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error saving hangar:", error);
-      toast({ title: "Erreur (simulation)", description: "Impossible de sauvegarder le hangar.", variant: "destructive" });
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de sauvegarder le hangar. Veuillez réessayer.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoadingData(false);
     }
   };
   
@@ -108,9 +142,31 @@ export default function HangarsAdminPage() {
   };
 
   const handleDeleteHangar = async (hangarId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce hangar? Cette action est irréversible (simulation).")) return;
-    setHangars(prevHangars => prevHangars.filter(h => h.id !== hangarId));
-    toast({ title: "Succès (simulation)", description: "Hangar supprimé." });
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce hangar? Cette action est irréversible.")) return;
+    
+    setLoadingData(true);
+    try {
+      const response = await fetch(`/api/hangars/${hangarId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // Mettre à jour l'état local en supprimant le hangar
+        setHangars(prevHangars => prevHangars.filter(h => h.id !== hangarId));
+        toast({ title: "Succès", description: "Hangar supprimé avec succès." });
+      } else {
+        throw new Error('Échec de la suppression du hangar');
+      }
+    } catch (error) {
+      console.error("Error deleting hangar:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de supprimer le hangar. Veuillez réessayer.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoadingData(false);
+    }
   };
 
   if (authLoading || (userProfile && !["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role) && !loadingData)) {
@@ -173,8 +229,11 @@ export default function HangarsAdminPage() {
                   </Select>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                  <Button type="submit">Sauvegarder</Button>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={loadingData}>Annuler</Button>
+                  <Button type="submit" disabled={loadingData}>
+                    {loadingData ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {loadingData ? "Sauvegarde en cours..." : "Sauvegarder"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -221,9 +280,18 @@ export default function HangarsAdminPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => openEditDialog(hangar)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteHangar(hangar.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                              <DropdownMenuItem 
+                                onClick={() => openEditDialog(hangar)}
+                                disabled={loadingData}
+                              >
+                                {loadingData ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit className="mr-2 h-4 w-4" />} Modifier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteHangar(hangar.id)} 
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                disabled={loadingData}
+                              >
+                                {loadingData ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Supprimer
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                                <DropdownMenuItem asChild>

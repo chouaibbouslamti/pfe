@@ -14,9 +14,9 @@ export function AppHeader() {
         </div>
         <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold md:text-base">
           <Package2 className="h-6 w-6 text-primary" />
-          <span className="sr-only">Gestion Hangar Intelligent</span>
+          <span className="sr-only">Gestion hangar et intervention au cacking (GHIC)</span>
         </Link>
-        <h1 className="text-lg font-semibold hidden md:block">Gestion Hangar Intelligent</h1>
+        <h1 className="text-lg font-semibold hidden md:block">Gestion hangar et intervention au cacking (GHIC)</h1>
       </div>
       <UserNav />
     </header>
