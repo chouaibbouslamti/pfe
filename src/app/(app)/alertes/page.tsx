@@ -113,8 +113,8 @@ export default function AlertsPage() {
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestion des Alertes</h1>
-            <p className="text-muted-foreground">Suivez et gérez toutes les alertes critiques du système (simulation locale).</p>
+            <h1 className="text-3xl font-bold tracking-tight text-[#0c1015] dark:text-[#0c1015] drop-shadow-sm">Gestion des Alertes</h1>
+            <p className="text-[#0c1015] dark:text-[#0c1015] font-medium">Suivez et gérez toutes les alertes critiques du système (simulation locale).</p>
         </div>
         <Dialog open={isCreateAlertOpen} onOpenChange={setIsCreateAlertOpen}>
           <DialogTrigger asChild>

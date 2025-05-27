@@ -157,14 +157,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    setLoading(true);
-    setCurrentUser(null);
-    setUserProfile(null);
-    localStorage.removeItem("currentUser");
-    // Optionally call a backend logout endpoint if session is managed server-side
-    // await fetch('/api/auth/logout', { method: 'POST' });
-    setLoading(false);
-    router.push("/connexion");
+    try {
+      setLoading(true);
+      // Appeler l'API de déconnexion
+      await fetch('/api/auth/logout', { method: 'POST' });
+      // Nettoyer l'état local
+      setCurrentUser(null);
+      setUserProfile(null);
+      localStorage.removeItem("currentUser");
+      setLoading(false);
+      router.push("/connexion");
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error);
+      // Continuer malgré l'erreur pour s'assurer que l'utilisateur est déconnecté côté client
+      setCurrentUser(null);
+      setUserProfile(null);
+      localStorage.removeItem("currentUser");
+      setLoading(false);
+      router.push("/connexion");
+    }
   };
 
   const role = currentUser?.role || null;

@@ -55,24 +55,49 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-2xl">Connexion</CardTitle>
-        <CardDescription>Entrez vos identifiants pour accéder à votre compte.</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="flex flex-col items-center p-4 md:p-8">
+      <div className="w-full max-w-md">
+        <Card className="w-full overflow-hidden border-none shadow-xl">
+          <div className="h-2 bg-gradient-to-r from-primary to-primary/60 w-full"></div>
+          <CardHeader className="space-y-1 pt-6">
+            <div className="flex items-center justify-center mb-2">
+              <div className="bg-primary/10 p-3 rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                  />
+                </svg>
+              </div>
+            </div>
+            <CardTitle className="text-2xl text-center font-bold">Connexion</CardTitle>
+            <CardDescription className="text-center">Entrez vos identifiants pour accéder à votre compte.</CardDescription>
+          </CardHeader>
+      <CardContent className="px-6 py-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
+                <FormItem className="space-y-2">
+                  <FormLabel className="font-medium">Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="exemple@domaine.com" {...field} />
+                    <Input 
+                      placeholder="exemple@domaine.com" 
+                      className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary" 
+                      {...field} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs font-medium" />
                 </FormItem>
               )}
             />
@@ -80,11 +105,16 @@ export function LoginForm() {
               control={form.control}
               name="password"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mot de passe</FormLabel>
+                <FormItem className="space-y-2">
+                  <FormLabel className="font-medium">Mot de passe</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} placeholder="********" {...field} />
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="********" 
+                        className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                        {...field} 
+                      />
                        <Button
                         type="button"
                         variant="ghost"
@@ -103,17 +133,21 @@ export function LoginForm() {
                       </Button>
                     </div>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs font-medium" />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary/90 transition-colors mt-6 h-11 font-medium" 
+              disabled={loading}
+            >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Se connecter"}
             </Button>
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col items-center space-y-2">
+      <CardFooter className="flex flex-col items-center space-y-2 pb-6 pt-0 px-6">
         <p className="text-sm text-muted-foreground">
           Pas encore de compte ?{" "}
           <Link href="/inscription" className="font-medium text-primary hover:underline">
@@ -124,6 +158,8 @@ export function LoginForm() {
             Utilisez les identifiants de votre base de données.
         </p>
       </CardFooter>
-    </Card>
+        </Card>
+      </div>
+    </div>
   );
 }

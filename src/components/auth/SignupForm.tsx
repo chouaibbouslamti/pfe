@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 
 const formSchema = z.object({
   firstName: z.string().min(2, { message: "Le prénom doit contenir au moins 2 caractères." }),
@@ -139,157 +139,203 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-2xl">Inscription</CardTitle>
-        <CardDescription>Créez votre compte.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prénom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Jean" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Dupont" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+    <div className="flex flex-col items-center p-4 md:p-8">
+      <div className="w-full max-w-md">
+        <Card className="w-full overflow-hidden border-none shadow-xl">
+          <div className="h-2 bg-gradient-to-r from-primary/60 to-primary w-full"></div>
+          <CardHeader className="space-y-1 pt-6">
+            <div className="flex items-center justify-center mb-2">
+              <div className="bg-primary/10 p-3 rounded-full">
+                <UserPlus className="h-8 w-8 text-primary" />
+              </div>
             </div>
-             <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom d'utilisateur</FormLabel>
-                  <FormControl>
-                    <Input placeholder="jeandupont" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="exemple@domaine.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phoneNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Numéro de téléphone (Optionnel)</FormLabel>
-                  <FormControl>
-                    <Input type="tel" placeholder="0612345678" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mot de passe</FormLabel>
-                  <FormControl>
-                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} placeholder="********" {...field} />
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" aria-hidden="true" />
-                        ) : (
-                          <Eye className="h-4 w-4" aria-hidden="true" />
-                        )}
-                        <span className="sr-only">
-                          {showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirmer le mot de passe</FormLabel>
-                  <FormControl>
-                     <div className="relative">
-                      <Input type={showConfirmPassword ? "text" : "password"} placeholder="********" {...field} />
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4" aria-hidden="true" />
-                        ) : (
-                          <Eye className="h-4 w-4" aria-hidden="true" />
-                        )}
-                        <span className="sr-only">
-                          {showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "S'inscrire"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-      <CardFooter className="flex flex-col items-center space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Déjà un compte ?{" "}
-          <Link href="/connexion" className="font-medium text-primary hover:underline">
-            Se connecter
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+            <CardTitle className="text-2xl text-center font-bold">Inscription</CardTitle>
+            <CardDescription className="text-center">Créez votre compte utilisateur.</CardDescription>
+          </CardHeader>
+          <CardContent className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="font-medium">Prénom</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Jean" 
+                            className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs font-medium" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="font-medium">Nom</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Dupont" 
+                            className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs font-medium" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="font-medium">Nom d'utilisateur</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="jeandupont" 
+                          className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs font-medium" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="font-medium">Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email" 
+                          placeholder="exemple@domaine.com" 
+                          className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs font-medium" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="font-medium">Numéro de téléphone (Optionnel)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="tel" 
+                          placeholder="0612345678" 
+                          className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs font-medium" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="font-medium">Mot de passe</FormLabel>
+                      <FormControl>
+                         <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="********" 
+                            className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            {...field} 
+                          />
+                           <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            <span className="sr-only">
+                              {showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                            </span>
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-xs font-medium" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="font-medium">Confirmer le mot de passe</FormLabel>
+                      <FormControl>
+                         <div className="relative">
+                          <Input 
+                            type={showConfirmPassword ? "text" : "password"} 
+                            placeholder="********" 
+                            className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            {...field} 
+                          />
+                           <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            <span className="sr-only">
+                              {showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                            </span>
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-xs font-medium" />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full bg-primary hover:bg-primary/90 transition-colors mt-6 h-11 font-medium" 
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "S'inscrire"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center space-y-2 pb-6 pt-0 px-6">
+            <p className="text-sm text-muted-foreground">
+              Déjà un compte ?{" "}
+              <Link href="/connexion" className="font-medium text-primary hover:underline">
+                Se connecter
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
   );
 }

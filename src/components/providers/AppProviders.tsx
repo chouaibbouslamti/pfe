@@ -6,12 +6,15 @@
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 import React from 'react';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
         <Toaster />
-      </AuthProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

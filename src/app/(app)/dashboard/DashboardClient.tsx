@@ -140,8 +140,8 @@ export function DashboardClient() {
                    style={{ borderLeftColor: stat.color.startsWith('text-') ? `var(--${stat.color.substring(5)})` : stat.color }}>
                 <CardContent className="p-6 flex justify-between items-center bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-                    <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground dark:text-amber-200/80 mb-1">{stat.title}</p>
+                    <p className="text-3xl font-bold tracking-tight dark:text-white">{stat.value}</p>
                   </div>
                   <div className="p-3 rounded-full bg-primary/10 dark:bg-primary/20">
                     <stat.icon className={`h-8 w-8 ${stat.color}`} />
@@ -154,10 +154,10 @@ export function DashboardClient() {
       </div>
       
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <Card>
+        <Card className="dark:border-gray-700">
           <CardHeader>
-            <CardTitle>Interventions Récentes</CardTitle>
-            <CardDescription>Liste des dernières interventions programmées ou en cours.</CardDescription>
+            <CardTitle className="dark:text-amber-200">Interventions Récentes</CardTitle>
+            <CardDescription className="dark:text-gray-300">Liste des dernières interventions programmées ou en cours.</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Placeholder for interventions list */}
@@ -178,10 +178,10 @@ export function DashboardClient() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dark:border-gray-700">
           <CardHeader>
-            <CardTitle>Alertes Actives</CardTitle>
-            <CardDescription>Alertes nécessitant une attention immédiate.</CardDescription>
+            <CardTitle className="dark:text-amber-200">Alertes Actives</CardTitle>
+            <CardDescription className="dark:text-gray-300">Alertes nécessitant une attention immédiate.</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Placeholder for active alerts */}
@@ -204,10 +204,10 @@ export function DashboardClient() {
       </div>
 
       {/* Performance chart */}
-      <Card className="mt-8">
+      <Card className="mt-8 dark:border-gray-700">
         <CardHeader>
-          <CardTitle>Performance Mensuelle</CardTitle>
-          <CardDescription>Suivi des lots traités et interventions.</CardDescription>
+          <CardTitle className="dark:text-amber-200">Performance Mensuelle</CardTitle>
+          <CardDescription className="dark:text-gray-300">Suivi des lots traités et interventions.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
           {loading ? (

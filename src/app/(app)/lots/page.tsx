@@ -278,8 +278,8 @@ export default function BatchesPage() {
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestion des Lots d'Engrais</h1>
-          <p className="text-muted-foreground">Suivez les lots stockés, leur statut et dates clés (simulation locale).</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0c1015] dark:text-[#0c1015] drop-shadow-sm">Gestion des Lots d'Engrais</h1>
+          <p className="text-[#0c1015] dark:text-[#0c1015] font-medium">Suivez les lots stockés, leur statut et dates clés (simulation locale).</p>
         </div>
          <div className="flex gap-2 mt-4 md:mt-0">
             <Button variant="outline" onClick={() => router.push('/lots')} disabled={!hangarIdFilter}>

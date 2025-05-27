@@ -49,9 +49,9 @@ export default function InterventionsPage() {
   }, [interventions /*, statusFilter, teamFilter */]);
   
   // Placeholder for deleting/cancelling an intervention
-  const handleCancelIntervention = (id: string) => {
+  const handleCancelIntervention = (id: string | number) => {
     if(confirm("Êtes-vous sûr de vouloir annuler cette intervention (simulation)?")) {
-      setInterventions(prev => prev.map(inv => inv.id === id ? {...inv, status: "CANCELLED"} : inv));
+      setInterventions(prev => prev.map(inv => String(inv.id) === String(id) ? {...inv, status: "CANCELLED"} : inv));
       // Add toast notification if desired
     }
   };
@@ -61,8 +61,8 @@ export default function InterventionsPage() {
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestion des Interventions</h1>
-          <p className="text-muted-foreground">Planifiez, assignez et suivez toutes les interventions (simulation locale).</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0c1015] dark:text-[#0c1015] drop-shadow-sm">Gestion des Interventions</h1>
+          <p className="text-[#0c1015] dark:text-[#0c1015] font-medium">Planifiez, assignez et suivez toutes les interventions (simulation locale).</p>
         </div>
         <div className="mt-4 md:mt-0 flex gap-2">
           <Button variant="outline" disabled> {/* Filter functionality can be added later */}
@@ -100,7 +100,7 @@ export default function InterventionsPage() {
                     <TableRow key={intervention.id}>
                       <TableCell className="font-medium">{intervention.title}</TableCell>
                       <TableCell>{intervention.hangarId}{intervention.batchId ? ` / ${intervention.batchId}`: ''}</TableCell>
-                      <TableCell>Équipe {intervention.teamId.replace('team', '') /* Basic display */}</TableCell>
+                      <TableCell>Équipe {String(intervention.teamId).replace(/team|\d+/g, '') || intervention.teamId /* Basic display */}</TableCell>
                       <TableCell>{new Date(intervention.scheduledTime).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(intervention.status)}>
@@ -124,7 +124,7 @@ export default function InterventionsPage() {
                             {intervention.status !== "COMPLETED" && intervention.status !== "CANCELLED" && (
                               <DropdownMenuItem 
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onClick={() => handleCancelIntervention(intervention.id)}
+                                onClick={() => handleCancelIntervention(String(intervention.id))}
                               >
                                 Annuler
                               </DropdownMenuItem>

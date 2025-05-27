@@ -52,49 +52,51 @@
   }
 
   .dark {
-    /* Keeping dark mode variables, though not explicitly requested, good for future */
-    --background: 210 40% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Mode sombre avec couleurs dorées et dégradés de vert */
+    --background: 220 20% 15%; /* Fond sombre avec une légère teinte bleutée */
+    --foreground: 45 80% 85%; /* Texte doré clair pour meilleure lisibilité */
 
-    --card: 210 40% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 220 25% 18%; /* Fond de carte légèrement plus clair que le fond principal */
+    --card-foreground: 45 80% 85%; /* Texte doré sur les cartes */
 
-    --popover: 210 40% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 220 25% 18%;
+    --popover-foreground: 45 80% 85%;
 
-    --primary: 210 40% 60%; /* Calm Blue */
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 80% 60%; /* Or pour la couleur primaire */
+    --primary-foreground: 220 20% 10%; /* Texte sombre sur fond doré */
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 160 30% 25%; /* Vert foncé pour la couleur secondaire */
+    --secondary-foreground: 45 80% 85%; /* Texte doré sur fond vert */
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 220 15% 20%;
+    --muted-foreground: 45 40% 70%; /* Or atténué pour le texte moins important */
 
-    --accent: 120 25% 65.1%; /* Soft Green */
-    --accent-foreground: 120 25% 5.9%;
+    --accent: 140 30% 40%; /* Vert moyen pour les accents */
+    --accent-foreground: 45 80% 85%; /* Texte doré sur les accents */
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 60% 40%; /* Rouge assombri pour les actions destructives */
+    --destructive-foreground: 45 80% 85%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 210 40% 60%;
+    --border: 220 20% 25%; /* Bordures légèrement plus claires */
+    --input: 220 20% 25%;
+    --ring: 45 80% 60%; /* Anneau doré pour les focus */
 
-    --chart-1: 210 40% 60%;
-    --chart-2: 120 25% 65.1%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Palette de couleurs pour les graphiques - dégradés de vert et or */
+    --chart-1: 45 80% 60%; /* Or */
+    --chart-2: 140 30% 40%; /* Vert moyen */
+    --chart-3: 160 40% 30%; /* Vert foncé */
+    --chart-4: 120 30% 50%; /* Vert clair */
+    --chart-5: 40 90% 50%; /* Or plus vif */
 
-    --sidebar-background: 210 40% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 210 40% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 0 0% 14.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14.9%;
-    --sidebar-ring: 210 40% 60%;
+    /* Sidebar avec des couleurs dorées et vertes */
+    --sidebar-background: 220 30% 12%; /* Fond sombre pour la barre latérale */
+    --sidebar-foreground: 45 80% 85%; /* Texte doré */
+    --sidebar-primary: 45 80% 60%; /* Accentuation dorée */
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 160 30% 25%; /* Vert foncé pour les accents */
+    --sidebar-accent-foreground: 45 80% 85%;
+    --sidebar-border: 220 20% 25%;
+    --sidebar-ring: 45 80% 60%; /* Anneau doré */
   }
 }
 

@@ -177,8 +177,8 @@ export default function HangarsAdminPage() {
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestion des Hangars</h1>
-          <p className="text-muted-foreground">Ajoutez, modifiez ou supprimez des hangars de stockage (simulation locale).</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0c1015] dark:text-[#0c1015] drop-shadow-sm">Gestion des Hangars</h1>
+          <p className="text-[#0c1015] dark:text-[#0c1015] font-medium">Ajoutez, modifiez ou supprimez des hangars de stockage (simulation locale).</p>
         </div>
          {userProfile?.role === "SUPER_ADMIN" && (
           <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {

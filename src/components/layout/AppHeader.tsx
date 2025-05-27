@@ -4,6 +4,7 @@ import Link from "next/link";
 import { UserNav } from "./UserNav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Warehouse } from "lucide-react"; // Using a warehouse icon to better match the app theme
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function AppHeader() {
   return (
@@ -18,9 +19,12 @@ export function AppHeader() {
           </div>
           <span className="sr-only">Gestion hangar et intervention au cacking (GHIC)</span>
         </Link>
-        <h1 className="text-lg font-semibold hidden md:block text-white tracking-wide">Gestion hangar et intervention au cacking (GHIC)</h1>
+        <h1 className="text-lg font-semibold hidden md:block text-black dark:text-black tracking-wide shadow-sm">Gestion hangar et intervention au cacking (GHIC)</h1>
       </div>
-      <UserNav />      
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <UserNav />
+      </div>
     </header>
   );
 }

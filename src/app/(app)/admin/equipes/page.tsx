@@ -193,8 +193,8 @@ export default function TeamsAdminPage() {
     <div className="container mx-auto py-2">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestion des Équipes</h1>
-          <p className="text-muted-foreground">Créez et gérez les équipes d'intervention.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0c1015] dark:text-[#0c1015] drop-shadow-sm">Gestion des Équipes</h1>
+          <p className="text-[#0c1015] dark:text-[#0c1015] font-medium">Créez et gérez les équipes d'intervention.</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
