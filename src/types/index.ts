@@ -1,6 +1,6 @@
 
 // Base ID type, can be number for DB entities, string for mocks if needed
-export type DbId = number; // Prisma typically uses number for BigInt that fits in JS number, or BigInt if too large. Sticking to number for simplicity.
+export type DbId = string | number; // Accepte à la fois les chaînes pour les mocks et les nombres pour la DB
 
 export type UserRole = "SUPER_ADMIN" | "TEAM_MANAGER" | "USER";
 
@@ -84,6 +84,7 @@ export interface Intervention {
   status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   notes?: string;
   createdAt: Date;
+  completedAt?: Date; // Ajouté pour être compatible avec les données mockées
 }
 
 export interface KPI {

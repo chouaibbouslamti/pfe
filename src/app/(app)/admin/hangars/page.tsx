@@ -21,6 +21,7 @@ import * as z from "zod";
 import { Warehouse, PlusCircle, Edit, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { mockHangars, generateId } from "@/lib/mockData";
+import { useMockDataContext } from "@/contexts/MockDataContext";
 
 const hangarSchema = z.object({
   name: z.string().min(3, "Le nom du hangar est requis (min 3 caractères)."),
@@ -31,6 +32,7 @@ const hangarSchema = z.object({
 
 export default function HangarsAdminPage() {
   const { userProfile, loading: authLoading } = useAuth();
+  const { useMockData } = useMockDataContext();
   const router = useRouter();
   const { toast } = useToast();
   const [hangars, setHangars] = useState<Hangar[]>([]);
@@ -38,32 +40,42 @@ export default function HangarsAdminPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHangar, setEditingHangar] = useState<Hangar | null>(null);
   
-  // Récupérer les données des hangars depuis l'API
+  // Récupérer les données des hangars depuis l'API ou utiliser les données mockées
   useEffect(() => {
     const fetchHangars = async () => {
-      try {
-        const response = await fetch('/api/hangars');
-        if (!response.ok) {
-          throw new Error('Failed to fetch hangars');
-        }
-        const data = await response.json();
-        setHangars(data);
-      } catch (error) {
-        console.error('Error fetching hangars:', error);
-        // Utiliser les données mockées en cas d'erreur
+      setLoadingData(true);
+      
+      if (useMockData) {
+        // Utiliser les données mockées si le toggle est activé
+        console.log("Utilisation des données mockées pour les hangars", { mockHangarsCount: mockHangars.length });
         setHangars(mockHangars);
-        toast({ 
-          title: "Erreur de connexion", 
-          description: "Impossible de récupérer les données. Utilisation des données de démonstration.", 
-          variant: "destructive" 
-        });
-      } finally {
         setLoadingData(false);
+      } else {
+        // Faire un appel API pour récupérer les données réelles
+        try {
+          const response = await fetch('/api/hangars');
+          if (!response.ok) {
+            throw new Error('Failed to fetch hangars');
+          }
+          const data = await response.json();
+          setHangars(data);
+        } catch (error) {
+          console.error('Error fetching hangars:', error);
+          // Utiliser les données mockées en cas d'erreur
+          setHangars(mockHangars);
+          toast({ 
+            title: "Erreur de connexion", 
+            description: "Impossible de récupérer les données. Utilisation des données de démonstration.", 
+            variant: "destructive" 
+          });
+        } finally {
+          setLoadingData(false);
+        }
       }
     };
 
     fetchHangars();
-  }, [toast]);
+  }, [toast, useMockData]);
 
   const form = useForm<z.infer<typeof hangarSchema>>({
     resolver: zodResolver(hangarSchema),
@@ -79,56 +91,101 @@ export default function HangarsAdminPage() {
   const onSubmit = async (values: z.infer<typeof hangarSchema>) => {
     setLoadingData(true);
     try {
-      if (editingHangar) {
-        // Mise à jour d'un hangar existant
-        const response = await fetch(`/api/hangars/${editingHangar.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
-        
-        if (response.ok) {
-          const updatedHangar = await response.json();
-          // Mettre à jour l'état local avec les données de la base de données
+      if (useMockData) {
+        // Gestion des données mockées
+        if (editingHangar) {
+          // Mise à jour d'un hangar existant dans les données mockées
+          const updatedHangar = {
+            ...editingHangar,
+            ...values,
+            id: editingHangar.id,
+          };
+          
+          // Mettre à jour l'état local
           setHangars(prevHangars => 
             prevHangars.map(h => h.id === editingHangar.id ? updatedHangar : h)
           );
-          toast({ title: "Succès", description: "Hangar mis à jour avec succès." });
+          
+          toast({
+            title: "Hangar mis à jour",
+            description: `Le hangar ${updatedHangar.name} a été mis à jour avec succès (données mockées).`,
+          });
         } else {
-          throw new Error('Échec de la mise à jour du hangar');
-        }
-      } else {
-        // Création d'un nouveau hangar
-        const response = await fetch('/api/hangars', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
-        
-        if (response.ok) {
-          const newHangar = await response.json();
+          // Création d'un nouveau hangar dans les données mockées
+          const newId = generateId();
+          const newHangar = {
+            id: newId,
+            ...values,
+            createdAt: new Date(),
+          };
+          
           // Ajouter le nouveau hangar à l'état local
           setHangars(prevHangars => [...prevHangars, newHangar]);
-          toast({ title: "Succès", description: "Nouveau hangar créé avec succès." });
+          
+          toast({
+            title: "Hangar ajouté",
+            description: `Le hangar ${newHangar.name} a été ajouté avec succès (données mockées).`,
+          });
+        }
+      } else {
+        // Gestion des données réelles via API
+        if (editingHangar) {
+          // Mise à jour d'un hangar existant
+          const response = await fetch(`/api/hangars/${editingHangar.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(values),
+          });
+          
+          if (response.ok) {
+            const updatedHangar = await response.json();
+            // Mettre à jour l'état local avec les données de la base de données
+            setHangars(prevHangars => 
+              prevHangars.map(h => h.id === editingHangar.id ? updatedHangar : h)
+            );
+            toast({
+              title: "Hangar mis à jour",
+              description: `Le hangar ${updatedHangar.name} a été mis à jour avec succès.`,
+            });
+          } else {
+            throw new Error('Failed to update hangar');
+          }
         } else {
-          throw new Error('Échec de la création du hangar');
+          // Création d'un nouveau hangar
+          const response = await fetch('/api/hangars', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(values),
+          });
+          
+          if (response.ok) {
+            const newHangar = await response.json();
+            // Ajouter le nouveau hangar à l'état local
+            setHangars(prevHangars => [...prevHangars, newHangar]);
+            toast({
+              title: "Hangar ajouté",
+              description: `Le hangar ${newHangar.name} a été ajouté avec succès.`,
+            });
+          } else {
+            throw new Error('Failed to create hangar');
+          }
         }
       }
       
-      // Réinitialiser le formulaire
+      // Fermer le dialogue et réinitialiser le formulaire
+      setIsDialogOpen(false);
       form.reset({ name: "", location: "", capacity: 0, status: "ACTIVE" });
       setEditingHangar(null);
-      setIsDialogOpen(false);
     } catch (error) {
-      console.error("Error saving hangar:", error);
-      toast({ 
-        title: "Erreur", 
-        description: "Impossible de sauvegarder le hangar. Veuillez réessayer.", 
-        variant: "destructive" 
+      console.error('Error submitting hangar data:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors de l'enregistrement du hangar.",
+        variant: "destructive",
       });
     } finally {
       setLoadingData(false);
@@ -142,30 +199,43 @@ export default function HangarsAdminPage() {
   };
 
   const handleDeleteHangar = async (hangarId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce hangar? Cette action est irréversible.")) return;
-    
-    setLoadingData(true);
-    try {
-      const response = await fetch(`/api/hangars/${hangarId}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        // Mettre à jour l'état local en supprimant le hangar
-        setHangars(prevHangars => prevHangars.filter(h => h.id !== hangarId));
-        toast({ title: "Succès", description: "Hangar supprimé avec succès." });
-      } else {
-        throw new Error('Échec de la suppression du hangar');
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce hangar ? Cette action est irréversible.')) {
+      setLoadingData(true);
+      try {
+        if (useMockData) {
+          // Supprimer le hangar de l'état local sans appel API
+          setHangars(prevHangars => prevHangars.filter(h => String(h.id) !== String(hangarId)));
+          toast({
+            title: "Hangar supprimé",
+            description: "Le hangar a été supprimé avec succès (données mockées).",
+          });
+        } else {
+          // Appel API pour supprimer le hangar
+          const response = await fetch(`/api/hangars/${hangarId}`, {
+            method: 'DELETE',
+          });
+          
+          if (response.ok) {
+            // Supprimer le hangar de l'état local
+            setHangars(prevHangars => prevHangars.filter(h => h.id !== hangarId));
+            toast({
+              title: "Hangar supprimé",
+              description: "Le hangar a été supprimé avec succès.",
+            });
+          } else {
+            throw new Error('Failed to delete hangar');
+          }
+        }
+      } catch (error) {
+        console.error('Error deleting hangar:', error);
+        toast({
+          title: "Erreur",
+          description: "Une erreur s'est produite lors de la suppression du hangar.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingData(false);
       }
-    } catch (error) {
-      console.error("Error deleting hangar:", error);
-      toast({ 
-        title: "Erreur", 
-        description: "Impossible de supprimer le hangar. Veuillez réessayer.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setLoadingData(false);
     }
   };
 

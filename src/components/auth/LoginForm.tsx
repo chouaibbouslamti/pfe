@@ -60,22 +60,13 @@ export function LoginForm() {
         <Card className="w-full overflow-hidden border-none shadow-xl">
           <div className="h-2 bg-gradient-to-r from-primary to-primary/60 w-full"></div>
           <CardHeader className="space-y-1 pt-6">
-            <div className="flex items-center justify-center mb-2">
-              <div className="bg-primary/10 p-3 rounded-full">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8 text-primary"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                  />
-                </svg>
+            <div className="flex items-center justify-center mb-4">
+              <div className="rounded-full bg-white shadow-md p-1 w-24 h-24 flex items-center justify-center">
+                <img 
+                  src="/logo.svg" 
+                  alt="Logo Hangar Intelligent" 
+                  className="w-20 h-20 object-contain" 
+                />
               </div>
             </div>
             <CardTitle className="text-2xl text-center font-bold">Connexion</CardTitle>

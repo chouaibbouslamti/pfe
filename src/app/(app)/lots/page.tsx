@@ -25,6 +25,7 @@ import { fr } from "date-fns/locale";
 import { formatDate } from "@/lib/dateUtils";
 import Link from "next/link";
 import { mockBatches, mockHangars, mockTeams, generateId } from "@/lib/mockData";
+import { useMockDataContext } from "@/contexts/MockDataContext";
 
 
 const batchSchema = z.object({
@@ -43,6 +44,7 @@ type BatchFormData = z.infer<typeof batchSchema>;
 
 export default function BatchesPage() {
   const { userProfile, loading: authLoading } = useAuth();
+  const { useMockData } = useMockDataContext();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hangarIdFilter = searchParams.get('hangarId');
@@ -57,72 +59,104 @@ export default function BatchesPage() {
   // Récupération des données depuis l'API
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        // Récupérer les lots
-        const batchesResponse = await fetch(hangarIdFilter 
-          ? `/api/batches?hangarId=${hangarIdFilter}` 
-          : '/api/batches'
-        );
+      setLoadingBatches(true);
+      
+      if (useMockData) {
+        // Utiliser les données mockées si le toggle est activé
+        console.log("Utilisation des données mockées pour les lots", { mockBatchesCount: mockBatches.length, hangarIdFilter });
         
-        if (batchesResponse.ok) {
-          const batchesData = await batchesResponse.json();
-          setAllBatches(batchesData);
+        // Filtrer les lots si un filtre de hangar est appliqué
+        if (hangarIdFilter) {
+          // Assurons-nous que les types sont compatibles (convertissons en string si nécessaire)
+          const filteredBatches = mockBatches.filter(batch => String(batch.hangarId) === String(hangarIdFilter));
+          console.log(`Lots filtrés par hangar ${hangarIdFilter}:`, filteredBatches.length);
+          setAllBatches(filteredBatches);
         } else {
+          console.log(`Tous les lots mockés:`, mockBatches.length);
+          setAllBatches(mockBatches);
+        }
+        setLoadingBatches(false);
+      } else {
+        // Sinon, faire les appels API normaux
+        try {
+          // Récupérer les lots
+          const batchesResponse = await fetch(hangarIdFilter 
+            ? `/api/batches?hangarId=${hangarIdFilter}` 
+            : '/api/batches'
+          );
+          
+          if (batchesResponse.ok) {
+            const batchesData = await batchesResponse.json();
+            setAllBatches(batchesData);
+          } else {
+            // Utiliser les données mockées en cas d'erreur
+            setAllBatches(mockBatches);
+            console.error('Failed to fetch batches');
+          }
+        } catch (error) {
+          console.error('Error fetching batches:', error);
           // Utiliser les données mockées en cas d'erreur
           setAllBatches(mockBatches);
-          console.error('Failed to fetch batches');
+        } finally {
+          setLoadingBatches(false);
         }
-      } catch (error) {
-        console.error('Error fetching batches:', error);
-        // Utiliser les données mockées en cas d'erreur
-        setAllBatches(mockBatches);
-      } finally {
-        setLoadingBatches(false);
       }
 
-      try {
-        // Récupérer les hangars
-        const hangarsResponse = await fetch('/api/hangars');
-        
-        if (hangarsResponse.ok) {
-          const hangarsData = await hangarsResponse.json();
-          setHangars(hangarsData);
-        } else {
+      if (useMockData) {
+        // Utiliser les données mockées pour les hangars
+        setHangars(mockHangars);
+        setLoadingHangars(false);
+      } else {
+        try {
+          // Récupérer les hangars
+          const hangarsResponse = await fetch('/api/hangars');
+          
+          if (hangarsResponse.ok) {
+            const hangarsData = await hangarsResponse.json();
+            setHangars(hangarsData);
+          } else {
+            // Utiliser les données mockées en cas d'erreur
+            setHangars(mockHangars);
+            console.error('Failed to fetch hangars');
+          }
+        } catch (error) {
+          console.error('Error fetching hangars:', error);
           // Utiliser les données mockées en cas d'erreur
           setHangars(mockHangars);
-          console.error('Failed to fetch hangars');
+        } finally {
+          setLoadingHangars(false);
         }
-      } catch (error) {
-        console.error('Error fetching hangars:', error);
-        // Utiliser les données mockées en cas d'erreur
-        setHangars(mockHangars);
-      } finally {
-        setLoadingHangars(false);
       }
 
-      try {
-        // Récupérer les équipes
-        const teamsResponse = await fetch('/api/teams');
-        
-        if (teamsResponse.ok) {
-          const teamsData = await teamsResponse.json();
-          setTeams(teamsData);
-        } else {
+      if (useMockData) {
+        // Utiliser les données mockées pour les équipes
+        setTeams(mockTeams);
+        setLoadingTeams(false);
+      } else {
+        try {
+          // Récupérer les équipes
+          const teamsResponse = await fetch('/api/teams');
+          
+          if (teamsResponse.ok) {
+            const teamsData = await teamsResponse.json();
+            setTeams(teamsData);
+          } else {
+            // Utiliser les données mockées en cas d'erreur
+            setTeams(mockTeams);
+            console.error('Failed to fetch teams');
+          }
+        } catch (error) {
+          console.error('Error fetching teams:', error);
           // Utiliser les données mockées en cas d'erreur
           setTeams(mockTeams);
-          console.error('Failed to fetch teams');
+        } finally {
+          setLoadingTeams(false);
         }
-      } catch (error) {
-        console.error('Error fetching teams:', error);
-        // Utiliser les données mockées en cas d'erreur
-        setTeams(mockTeams);
-      } finally {
-        setLoadingTeams(false);
       }
     };
 
     fetchData();
-  }, [hangarIdFilter]);
+  }, [hangarIdFilter, useMockData]);
   const [loadingData, setLoadingData] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
@@ -156,10 +190,11 @@ export default function BatchesPage() {
   }, [userProfile, authLoading, router]);
 
   const filteredBatches = useMemo(() => {
+    console.log(`Filtering batches, total count:`, allBatches.length);
     if (!hangarIdFilter) return allBatches;
-    return allBatches.filter(batch => batch.hangarId === hangarIdFilter);
+    
+    return allBatches.filter(batch => String(batch.hangarId) === String(hangarIdFilter));
   }, [allBatches, hangarIdFilter]);
-
 
   const onSubmit = async (values: BatchFormData) => {
     setLoadingData(true);
@@ -268,7 +303,12 @@ export default function BatchesPage() {
     }
   };
   
-  const getHangarName = (id: string) => hangars.find(h => h.id === id)?.name || "N/A";
+  const getHangarName = (id: string | number) => {
+    // Convertir en string pour assurer la compatibilité
+    const stringId = String(id);
+    const hangar = hangars.find(h => String(h.id) === stringId);
+    return hangar ? hangar.name : `Hangar ${id}`;
+  };
 
   if (authLoading || (userProfile && !["SUPER_ADMIN", "TEAM_MANAGER"].includes(userProfile.role) && !loadingData)) {
      return <div className="flex justify-center items-center h-screen"><p>Accès non autorisé ou chargement...</p></div>;

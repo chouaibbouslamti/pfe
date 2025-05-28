@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ListChecks, Clock, CalendarCheck2, AlertTriangle } from "lucide-react";
 // import type { Metadata } from "next"; // Metadata for server components
 import Link from "next/link";
-import { useState, useMemo } from "react"; // Added useState, useMemo
+import { useState, useMemo, useEffect } from "react"; // Added useState, useMemo, useEffect
 import { mockInterventionsData } from "@/lib/mockData"; // Assuming tasks are derived from interventions
 import { useAuth } from "@/contexts/auth-context";
 
@@ -41,27 +41,27 @@ const generateMockTasks = (userId?: string, userTeamId?: string): MockTask[] => 
         // Or just create generic tasks based on interventions
         if (inv.status === "PLANNED" || inv.status === "IN_PROGRESS") {
              tasks.push({
-                id: `TASK${inv.id.replace('INT', '')}`,
-                interventionId: inv.id,
+                id: `TASK${String(inv.id).replace('INT', '')}`,
+                interventionId: String(inv.id),
                 title: inv.title,
                 description: inv.description,
                 scheduledTime: new Date(inv.scheduledTime).toISOString(),
-                hangar: `Hangar ${inv.hangarId.replace('H00', '')}`, // Basic display
+                hangar: `Hangar ${String(inv.hangarId).replace('H00', '')}`, // Basic display
                 priority: index % 3 === 0 ? "Haute" : index % 3 === 1 ? "Moyenne" : "Basse",
                 status: inv.status === "PLANNED" ? "À faire" : "En cours",
-                assignedToTeam: inv.teamId,
+                assignedToTeam: String(inv.teamId),
             });
         } else if (inv.status === "COMPLETED" && tasks.length < 5) { // Show a few completed
              tasks.push({
-                id: `TASK${inv.id.replace('INT', '')}`,
-                interventionId: inv.id,
+                id: `TASK${String(inv.id).replace('INT', '')}`,
+                interventionId: String(inv.id),
                 title: inv.title,
                 description: inv.description,
                 scheduledTime: new Date(inv.scheduledTime).toISOString(),
-                hangar: `Hangar ${inv.hangarId.replace('H00', '')}`,
+                hangar: `Hangar ${String(inv.hangarId).replace('H00', '')}`,
                 priority: "Basse",
                 status: "Terminée",
-                assignedToTeam: inv.teamId,
+                assignedToTeam: String(inv.teamId),
             });
         }
     });
@@ -103,7 +103,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (userProfile) {
-      setTasks(generateMockTasks(userProfile.uid, userProfile.teamId));
+      setTasks(generateMockTasks(userProfile.uid, userProfile.teamId ? String(userProfile.teamId) : undefined));
     } else {
       // Handle case where userProfile is not yet loaded, or show generic tasks
       setTasks(generateMockTasks()); 
@@ -114,8 +114,8 @@ export default function TasksPage() {
   return (
     <div className="container mx-auto py-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Mes Tâches Assignées</h1>
-        <p className="text-muted-foreground">Voici la liste des tâches qui vous ont été confiées (simulation locale).</p>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Mes Tâches Assignées</h1>
+        <p className="text-base text-gray-800 dark:text-gray-200">Voici la liste des tâches qui vous ont été confiées (simulation locale).</p>
       </div>
 
       <Card>

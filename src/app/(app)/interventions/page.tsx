@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, PlusCircle, SlidersHorizontal, ClipboardList } from "lucide-react";
 // import type { Metadata } from "next"; // Metadata for server components
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Intervention } from "@/types";
 import { mockInterventionsData } from "@/lib/mockData";
+import { useMockDataContext } from "@/contexts/MockDataContext";
+import { Loader2 } from "lucide-react";
 
 // export const metadata: Metadata = { // Removed metadata for client component
 //   title: "Interventions - Gestion Hangar Intelligent",
@@ -38,10 +40,41 @@ const statusTranslations: { [key: string]: string } = {
 
 
 export default function InterventionsPage() {
-  const [interventions, setInterventions] = useState<Intervention[]>(mockInterventionsData);
+  const { useMockData } = useMockDataContext();
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [loading, setLoading] = useState(true);
   // Add state for filters if needed, e.g.,
   // const [statusFilter, setStatusFilter] = useState("all");
   // const [teamFilter, setTeamFilter] = useState("all");
+  
+  // Effet pour charger les données en fonction du mode (mock ou API)
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      if (useMockData) {
+        // Utiliser les données mockées complètes
+        setInterventions(mockInterventionsData);
+      } else {
+        try {
+          // Ici, on pourrait faire un appel API réel
+          // Pour l'instant, simulation d'un délai pour montrer le chargement
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // On utilise un sous-ensemble des données mockées pour simuler une différence
+          // entre les données de la base et les données mockées complètes
+          setInterventions(mockInterventionsData.slice(0, 4));
+        } catch (error) {
+          console.error('Erreur lors du chargement des interventions:', error);
+          setInterventions([]);
+        }
+      }
+      
+      setLoading(false);
+    };
+    
+    fetchData();
+  }, [useMockData]);
 
   const filteredInterventions = useMemo(() => {
     // Apply filters here if implemented
@@ -82,7 +115,12 @@ export default function InterventionsPage() {
           <CardDescription>Aperçu des interventions planifiées, en cours et terminées.</CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredInterventions.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-lg font-medium">Chargement des interventions...</span>
+            </div>
+          ) : filteredInterventions.length > 0 ? (
              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

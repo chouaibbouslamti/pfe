@@ -7,13 +7,16 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 import React from 'react';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { MockDataProvider } from '@/contexts/MockDataContext';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        {children}
-        <Toaster />
+        <MockDataProvider>
+          {children}
+          <Toaster />
+        </MockDataProvider>
       </ThemeProvider>
     </AuthProvider>
   );

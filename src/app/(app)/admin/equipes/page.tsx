@@ -21,6 +21,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Checkbox } from "@/components/ui/checkbox";
 // Import axios pour les appels API
 import axios from "axios";
+import { mockTeams, mockUserProfiles, generateId } from "@/lib/mockData";
+import { useMockDataContext } from "@/contexts/MockDataContext";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Le nom de l'équipe est requis (min 3 caractères)."),
@@ -30,6 +32,7 @@ const teamSchema = z.object({
 
 export default function TeamsAdminPage() {
   const { userProfile, loading: authLoading, localUserProfiles, setLocalUserProfiles: setLocalUsers } = useAuth();
+  const { useMockData } = useMockDataContext();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]); 
@@ -53,34 +56,46 @@ export default function TeamsAdminPage() {
     }
   }, [userProfile, authLoading, router]);
 
-  // Charger les équipes depuis l'API
+  // Charger les équipes depuis l'API ou depuis les données mockées
   useEffect(() => {
     if (userProfile?.role === "SUPER_ADMIN") {
       const fetchData = async () => {
-        try {
-          // Charger les équipes
-          const teamsResponse = await axios.get('/api/teams');
-          setTeams(teamsResponse.data);
-          
-          // Charger les utilisateurs
-          const usersResponse = await axios.get('/api/users');
-          setUsers(usersResponse.data);
-          
+        setLoadingData(true);
+        
+        if (useMockData) {
+          // Utiliser les données mockées si le toggle est activé
+          console.log("Utilisation des données mockées pour les équipes", { mockTeamsCount: mockTeams.length, mockUsersCount: mockUserProfiles.length });
+          setTeams(mockTeams);
+          setUsers(mockUserProfiles);
           setLoadingData(false);
-        } catch (error) {
-          console.error('Erreur lors du chargement des données:', error);
-          toast({ 
-            title: "Erreur", 
-            description: "Impossible de charger les données. Veuillez réessayer.", 
-            variant: "destructive" 
-          });
-          setLoadingData(false);
+        } else {
+          try {
+            // Charger les équipes
+            const teamsResponse = await axios.get('/api/teams');
+            setTeams(teamsResponse.data);
+            
+            // Charger les utilisateurs
+            const usersResponse = await axios.get('/api/users');
+            setUsers(usersResponse.data);
+          } catch (error) {
+            console.error('Erreur lors du chargement des données:', error);
+            toast({ 
+              title: "Erreur", 
+              description: "Impossible de charger les données. Utilisation des données de démonstration.", 
+              variant: "destructive" 
+            });
+            // Utiliser les données mockées en cas d'erreur
+            setTeams(mockTeams);
+            setUsers(mockUserProfiles);
+          } finally {
+            setLoadingData(false);
+          }
         }
       };
       
       fetchData();
     }
-  }, [userProfile, toast]);
+  }, [userProfile, toast, useMockData]);
   
   const getUserName = (uid: string | number) => {
     if (!users || !Array.isArray(users)) return String(uid);
@@ -91,52 +106,77 @@ export default function TeamsAdminPage() {
   }
 
   const onSubmit = async (values: z.infer<typeof teamSchema>) => {
+    setLoadingData(true);
     try {
-      if (editingTeam) { // Update existing team
-        // Appel API pour mettre à jour l'équipe
-        const response = await axios.put(`/api/teams/${editingTeam.id}`, {
-          name: values.name,
-          contact: values.contact || null,
-          managerId: values.managerId
-        });
-        
-        // Mettre à jour l'état local avec les données de la réponse
-        const updatedTeam = response.data;
-        setTeams(prevTeams => prevTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t));
-        
-        toast({ title: "Succès", description: "Équipe mise à jour." });
-        setEditingTeam(null);
-        setIsEditDialogOpen(false);
-      } else { // Create new team
-        // Appel API pour créer une nouvelle équipe
-        const response = await axios.post('/api/teams', {
-          name: values.name,
-          contact: values.contact || null,
-          managerId: values.managerId
-        });
-        
-        // Ajouter la nouvelle équipe à l'état local
-        const newTeam = response.data;
-        setTeams(prevTeams => [...prevTeams, newTeam]);
-        
-        // Recharger les utilisateurs pour refléter les changements
-        const usersResponse = await axios.get('/api/users');
-        setUsers(usersResponse.data);
-        
-        toast({ title: "Succès", description: "Nouvelle équipe créée." });
-        setIsCreateDialogOpen(false);
+      if (useMockData) {
+        // Utilisation des données mockées
+        if (editingTeam) {
+          // Mode édition avec données mockées
+          const updatedTeam = {
+            ...editingTeam,
+            ...values,
+            id: editingTeam.id
+          };
+          
+          // Mise à jour réussie, on met à jour les données locales
+          setTeams(prev => prev.map(team => team.id === editingTeam.id ? updatedTeam : team));
+          toast({ title: "Succès", description: "Équipe mise à jour avec succès (données mockées)." });
+        } else {
+          // Mode création avec données mockées
+          const newTeamId = generateId();
+          const newTeam = {
+            id: newTeamId,
+            ...values,
+            members: [values.managerId],
+            createdAt: new Date()
+          };
+          
+          // Création réussie, on ajoute l'équipe aux données locales
+          setTeams(prev => [...prev, newTeam]);
+          toast({ title: "Succès", description: "Nouvelle équipe créée avec succès (données mockées)." });
+        }
+      } else {
+        // Utilisation de l'API
+        if (editingTeam) {
+          // Mode édition
+          const response = await axios.put(`/api/teams/${editingTeam.id}`, values);
+          
+          if (response.status === 200) {
+            // Mise à jour réussie, on met à jour les données locales
+            setTeams(prev => prev.map(team => team.id === editingTeam.id ? response.data : team));
+            toast({ title: "Succès", description: "Équipe mise à jour avec succès." });
+          }
+        } else {
+          // Mode création
+          const response = await axios.post('/api/teams', values);
+          
+          if (response.status === 201) {
+            // Création réussie, on ajoute l'équipe aux données locales
+            setTeams(prev => [...prev, response.data]);
+            toast({ title: "Succès", description: "Nouvelle équipe créée avec succès." });
+          }
+        }
       }
-      form.reset();
+      
+      // Fermer le dialogue
+      setIsCreateDialogOpen(false);
+      setIsEditDialogOpen(false);
+      setEditingTeam(null);
+      
+      // Réinitialiser le formulaire
+      form.reset({ name: "", managerId: "", contact: "" });
     } catch (error) {
-      console.error("Error saving team:", error);
+      console.error('Erreur lors de la sauvegarde de l\'équipe:', error);
       toast({ 
         title: "Erreur", 
         description: "Impossible de sauvegarder l'équipe. Veuillez réessayer.", 
         variant: "destructive" 
       });
+    } finally {
+      setLoadingData(false);
     }
   };
-  
+
   const openEditDialog = (team: Team) => {
     setEditingTeam(team);
     form.reset({ name: team.name, managerId: team.managerId, contact: team.contact || "" });
@@ -157,33 +197,51 @@ export default function TeamsAdminPage() {
 
   const saveTeamMembers = async () => {
     if (!teamToManageMembers) return;
+    
+    setLoadingData(true);
     try {
-      // Appel API pour mettre à jour les membres de l'équipe
-      const response = await axios.put(`/api/teams/${teamToManageMembers.id}/members`, {
+      // Créer une copie du tableau pour la mise à jour
+      const updatedTeam = {
+        ...teamToManageMembers,
         members: selectedMembers
-      });
+      };
       
-      // Mettre à jour l'état local avec les données de la réponse
-      const updatedTeam = response.data;
-      setTeams(prevTeams => prevTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t));
+      if (useMockData) {
+        // Mise à jour locale pour les données mockées
+        setTeams(prev => prev.map(team => team.id === teamToManageMembers.id ? updatedTeam : team));
+        toast({ title: "Succès", description: "Membres de l'équipe mis à jour avec succès (données mockées)." });
+      } else {
+        // Appel API pour les données réelles
+        try {
+          const response = await axios.put(`/api/teams/${teamToManageMembers.id}/members`, { members: selectedMembers });
+          
+          if (response.status === 200) {
+            setTeams(prev => prev.map(team => team.id === teamToManageMembers.id ? response.data : team));
+            toast({ title: "Succès", description: "Membres de l'équipe mis à jour avec succès." });
+          }
+        } catch (error) {
+          console.error('Erreur lors de la mise à jour des membres:', error);
+          // Fallback en cas d'erreur - mise à jour locale seulement
+          setTeams(prev => prev.map(team => team.id === teamToManageMembers.id ? updatedTeam : team));
+          toast({ title: "Avertissement", description: "API indisponible. Mise à jour simulée uniquement." });
+        }
+      }
       
-      // Recharger les utilisateurs pour refléter les changements
-      const usersResponse = await axios.get('/api/users');
-      setUsers(usersResponse.data);
-
-      toast({ title: "Succès", description: "Membres de l'équipe mis à jour." });
+      // Fermer le dialogue
       setIsManageMembersDialogOpen(false);
       setTeamToManageMembers(null);
+      setSelectedMembers([]);
     } catch (error) {
-      console.error("Error updating team members:", error);
+      console.error('Erreur lors de la mise à jour des membres:', error);
       toast({ 
         title: "Erreur", 
-        description: "Impossible de mettre à jour les membres de l'équipe. Veuillez réessayer.", 
+        description: "Impossible de mettre à jour les membres. Veuillez réessayer.", 
         variant: "destructive" 
       });
+    } finally {
+      setLoadingData(false);
     }
   };
-
 
   if (authLoading || (userProfile?.role !== "SUPER_ADMIN" && !loadingData)) {
     return <div className="flex justify-center items-center h-screen"><p>Accès non autorisé ou chargement...</p></div>;
@@ -404,9 +462,16 @@ export default function TeamsAdminPage() {
                             <DropdownMenuItem 
                               className="text-destructive focus:text-destructive focus:bg-destructive/10" 
                               onClick={() => {
-                                if(confirm("Supprimer cette équipe ? (Simulation)")) {
-                                  setTeams(prev => prev.filter(t => t.id !== team.id));
-                                  toast({title: "Équipe supprimée (simulation)"});
+                                if(confirm("Supprimer cette équipe ?")) {
+                                  if (useMockData) {
+                                    // Supprimer l'équipe des données mockées
+                                    setTeams(prev => prev.filter(t => String(t.id) !== String(team.id)));
+                                    toast({title: "Équipe supprimée", description: "Équipe supprimée avec succès (données mockées)."});
+                                  } else {
+                                    // Appel API pour les données réelles (simulé pour l'instant)
+                                    setTeams(prev => prev.filter(t => t.id !== team.id));
+                                    toast({title: "Équipe supprimée", description: "API indisponible. Suppression simulée uniquement."});
+                                  }
                                 }
                               }}
                             >

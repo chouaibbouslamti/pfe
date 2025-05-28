@@ -5,6 +5,7 @@ import { UserNav } from "./UserNav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Warehouse } from "lucide-react"; // Using a warehouse icon to better match the app theme
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { MockDataToggle } from "@/components/ui/MockDataToggle";
 
 export function AppHeader() {
   return (
@@ -22,6 +23,7 @@ export function AppHeader() {
         <h1 className="text-lg font-semibold hidden md:block text-black dark:text-black tracking-wide shadow-sm">Gestion hangar et intervention au cacking (GHIC)</h1>
       </div>
       <div className="flex items-center gap-4">
+        <MockDataToggle />
         <ThemeToggle />
         <UserNav />
       </div>

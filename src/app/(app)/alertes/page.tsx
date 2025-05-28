@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BellRing, Info, TriangleAlert, ShieldAlert, CheckCircle2, PlusCircle } from "lucide-react";
 // import type { Metadata } from "next"; // Metadata is for server components
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { mockAlertsData, generateId } from "@/lib/mockData"; // Import mock data
+import { useMockDataContext } from "@/contexts/MockDataContext";
 import type { Alert as AlertType } from "@/types"; // Ensure AlertType matches our type
 import {
   Dialog,
@@ -65,10 +66,42 @@ const getStatusBadge = (status: string) => {
 
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<AlertType[]>(mockAlertsData);
+  const { useMockData } = useMockDataContext();
+  const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateAlertOpen, setIsCreateAlertOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Effet pour charger les données en fonction du mode (mock ou API)
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      if (useMockData) {
+        // Utiliser les données mockées
+        setAlerts(mockAlertsData);
+      } else {
+        try {
+          // Ici, on pourrait faire un appel API réel
+          // Pour l'instant, simulation d'un délai pour montrer le chargement
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          // On utilise un sous-ensemble des données mockées pour simuler une différence
+          // entre les données de la base et les données mockées complètes
+          setAlerts(mockAlertsData.slice(0, 3));
+        } catch (error) {
+          console.error('Erreur lors du chargement des alertes:', error);
+          // Fallback sur les données mockées en cas d'erreur
+          setAlerts([]);
+        }
+      }
+      
+      setLoading(false);
+    };
+    
+    fetchData();
+  }, [useMockData]);
 
   const form = useForm<AlertFormData>({
     resolver: zodResolver(alertSchema),
