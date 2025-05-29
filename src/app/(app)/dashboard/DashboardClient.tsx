@@ -263,17 +263,28 @@ export function DashboardClient() {
   const generateDashboardReport = async () => {
     setGeneratingPdf(true);
     try {
-      const htmlContent = dashboardRef.current?.innerHTML || '';
       const today = new Date();
       const formattedDate = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
       
-      // Fonction generatePDF importée de lib/reportUtils
-      await generatePDF({
-        content: htmlContent,
-        filename: `tableau-de-bord-${formattedDate}.pdf`,
-        title: 'Tableau de Bord Gestion des Engrais',
-        author: 'Système de Gestion'
-      });
+      // Vérifier que la référence du dashboard existe
+      if (!dashboardRef.current) {
+        console.error('Élément du tableau de bord introuvable');
+        return;
+      }
+      
+      // Ajouter un ID à l'élément pour la capture
+      dashboardRef.current.id = 'dashboard-to-export';
+      
+      // Générer le PDF avec l'ID de l'élément
+      await generatePDF(
+        'dashboard-to-export',
+        `tableau-de-bord-${formattedDate}`,
+        'Tableau de Bord Gestion des Engrais',
+        'landscape'
+      );
+      
+      // Nettoyer l'ID après utilisation
+      dashboardRef.current.removeAttribute('id');
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
     } finally {
